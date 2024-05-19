@@ -1,0 +1,22 @@
+services:
+  kafka-node-1:
+    container_name: kafka-node-1
+    image: kraft-kafka:latest
+    ports:
+      - "19092:19092"
+    networks:
+      - kafka-net
+    volumes:
+      - ./config/kafka-node-1/server.properties:/opt/kafka/config/kraft/server.properties
+  kafka-node-2:
+    container_name: kafka-node-2
+    image: kraft-kafka:latest
+    ports:
+      - "29092:29092"
+    networks:
+      - kafka-net
+    volumes:
+      - ./config/kafka-node-2/server.properties:/opt/kafka/config/kraft/server.properties
+networks:
+  kafka-net:
+    driver: bridge
