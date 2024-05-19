@@ -1,2 +1,2 @@
 # FowlFlightForensics
- A Kafka-based CSV parser for bird-related airplane accidents
+ A Kafka-based CSV processor for bird-related airplane accidents

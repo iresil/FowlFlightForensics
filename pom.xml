@@ -12,7 +12,7 @@
 	<artifactId>fowl-flight-forensics</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>FowlFlightForensics</name>
-	<description>A Kafka-based CSV parser for bird-related airplane accidents</description>
+	<description>A Kafka-based CSV processor for bird-related airplane accidents</description>
 	<properties>
 		<java.version>22</java.version>
 		<spring-boot.version>3.2.5</spring-boot.version>
