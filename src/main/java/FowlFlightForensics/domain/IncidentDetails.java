@@ -13,6 +13,9 @@ public class IncidentDetails {
     @CsvBindByName(column = "Incident Year")
     private Integer incidentYear;
 
+    @CsvBindByName(column = "Incident Month")
+    private Integer incidentMonth;
+
     @CsvBindByName(column = "Incident Day")
     private Integer incidentDay;
 
@@ -176,7 +179,7 @@ public class IncidentDetails {
     private Boolean fuselageStrike;
 
     @CsvBindByName(column = "Fuselage Damage")
-    private Boolean incidentMonth;
+    private Boolean fuselageDamage;
 
     @CsvBindByName(column = "Landing Gear Strike")
     private Boolean landingGearStrike;
