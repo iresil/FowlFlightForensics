@@ -10,11 +10,11 @@ public abstract class BaseComponent {
 
     @PostConstruct
     public void init() {
-        logger.info("Loaded Component {}", getClass());
+        logger.trace("Loaded Component {}", getClass());
     }
 
     @PreDestroy
     public void destroy() {
-        logger.info("Unloading Component {}", getClass());
+        logger.trace("Unloading Component {}", getClass());
     }
 }
