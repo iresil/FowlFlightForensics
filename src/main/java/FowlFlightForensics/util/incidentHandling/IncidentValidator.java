@@ -3,10 +3,12 @@ package FowlFlightForensics.util.incidentHandling;
 import FowlFlightForensics.domain.IncidentDetails;
 import FowlFlightForensics.domain.IncidentSummary;
 import FowlFlightForensics.domain.InvalidIncidents;
+import FowlFlightForensics.util.BaseComponent;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.stereotype.Component;
 
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -14,11 +16,28 @@ import java.util.stream.Collectors;
 import static java.util.stream.Collectors.*;
 
 @Component
-public class IncidentValidator {
+public class IncidentValidator extends BaseComponent {
+    private final float MISSING_THRESHOLD = 0.03f;
+
     public InvalidIncidents invalidIncidents;
 
     public List<IncidentSummary> validateAndTransformIncidents(List<IncidentDetails> incidentDetails) {
         List<IncidentSummary> incidentSummaryList = validateAndGenerateSummary(incidentDetails);
+
+        Map<String, Set<IncidentSummary>> incidentsToCheck = new HashMap<>();
+        Field[] fields = invalidIncidents.getClass().getDeclaredFields();
+        for (Field f : fields) {
+            try {
+                if (f.getType() == List.class) {
+                    List<IncidentSummary> incidentSummary = (List<IncidentSummary>)f.get(invalidIncidents);
+                    if (!incidentSummary.isEmpty() && incidentSummary.size() < incidentSummaryList.size() * MISSING_THRESHOLD) {
+                        incidentsToCheck.put(f.getName(), new HashSet<>(((List<IncidentSummary>)f.get(invalidIncidents))));
+                    }
+                }
+            } catch (IllegalAccessException e) {
+                logger.error("Error attempting to retrieve InvalidIncidents fields", e);
+            }
+        }
 
         Map<String, Set<String>> airports = extractKeyValuePairs(incidentSummaryList, IncidentSummary::airportId, IncidentSummary::airport);
         Map<String, String> airportsMap = transformToMapOfStrings(airports);
@@ -29,6 +48,9 @@ public class IncidentValidator {
         Map<String, String> speciesMap = transformToMapOfStrings(species);
         Map<String, Set<String>> speciesToCheck = extractKeyValuePairs(incidentSummaryList, IncidentSummary::speciesName, IncidentSummary::speciesId);
         var multiCodeSpecies = speciesToCheck.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()));
+
+        List<String> unknownSpeciesIds = speciesMap.keySet().stream().filter(i -> i.contains("UNK")).toList();
+        List<String> unknownSpeciesNames = speciesToCheck.keySet().stream().filter(i -> i.contains("UNKNOWN")).toList();
 
         return incidentSummaryList;
     }
@@ -63,7 +85,9 @@ public class IncidentValidator {
         validateNotNull(incident.getWarningIssued(), invalidIncidents.invalidWarningIssued, summary, List::add);
         validateNotEmpty(incident.getFlightPhase(), invalidIncidents.invalidFlightPhases, summary, List::add);
         validateByValue(incident.getSpeciesId(), "100000000000", invalidIncidents.invalidSpeciesIds, summary, List::add);
+        //validateByValue(incident.getSpeciesId(), "UNK", invalidIncidents.invalidSpeciesIds, summary, List::add);
         validateNotEmpty(incident.getSpeciesName(), invalidIncidents.invalidSpeciesNames, summary, List::add);
+        //validateByValue(incident.getSpeciesName(), "UNKNOWN", invalidIncidents.invalidSpeciesNames, summary, List::add);
         validateNotEmpty(incident.getSpeciesQuantity(), invalidIncidents.invalidSpeciesQuantities, summary, List::add);
         validateNotNull(incident.getFatalities(), invalidIncidents.invalidFatalities, summary, List::add);
         validateNotNull(incident.getInjuries(), invalidIncidents.invalidInjuries, summary, List::add);
@@ -106,7 +130,7 @@ public class IncidentValidator {
     }
 
     private <T, R> void validateByValue(String value, String toCompare, T obj, R summary, AddingFunction<T, R> func) {
-        if (value.equals(toCompare)) {
+        if (value.contains(toCompare)) {
             func.add(obj, summary);
         }
     }
