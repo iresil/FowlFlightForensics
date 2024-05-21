@@ -3,10 +3,8 @@ package FowlFlightForensics.util.incidentHandling;
 import FowlFlightForensics.domain.IncidentDetails;
 import FowlFlightForensics.domain.IncidentSummary;
 import FowlFlightForensics.domain.InvalidIncidents;
-import lombok.Setter;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -45,26 +43,30 @@ public class IncidentValidator {
             IncidentSummary summary = extractSummaryFromIncidentDetails(incident, qtyRange);
             incidentSummaryList.add(summary);
 
-            validateByRange(incident.getIncidentYear(), 1990, 2015, invalidIncidents.invalidYears, summary, List::add);
-            validateByRange(incident.getIncidentMonth(), 1, 12, invalidIncidents.invalidMonths, summary, List::add);
-            validateByRange(incident.getIncidentDay(), 1, 31, invalidIncidents.invalidDays, summary, List::add);
-            validateByValue(incident.getAircraft(), "UNKNOWN", invalidIncidents.invalidAircraft, summary, List::add);
-            validateNotNull(incident.getAircraftMass(), invalidIncidents.invalidAircraftMass, summary, List::add);
-            validateNotNull(incident.getEngines(), invalidIncidents.invalidEngines, summary, List::add);
-            validateByRegex(incident.getAirportId(), "-?\\d+(\\.\\d+)?", invalidIncidents.invalidAirportIds, summary, List::add);
-            validateByRegex(incident.getAirportId(), "UNKN", invalidIncidents.invalidAirportIds, summary, List::add);
-            validateNotEmpty(incident.getAirport(), invalidIncidents.invalidAirportNames, summary, List::add);
-            validateNotEmpty(incident.getState(), invalidIncidents.invalidStates, summary, List::add);
-            validateNotEmpty(incident.getFaaRegion(), invalidIncidents.invalidFaaRegions, summary, List::add);
-            validateNotNull(incident.getWarningIssued(), invalidIncidents.invalidWarningIssued, summary, List::add);
-            validateNotEmpty(incident.getFlightPhase(), invalidIncidents.invalidFlightPhases, summary, List::add);
-            validateByValue(incident.getSpeciesId(), "100000000000", invalidIncidents.invalidSpeciesIds, summary, List::add);
-            validateNotEmpty(incident.getSpeciesName(), invalidIncidents.invalidSpeciesNames, summary, List::add);
-            validateNotEmpty(incident.getSpeciesQuantity(), invalidIncidents.invalidSpeciesQuantities, summary, List::add);
-            validateNotNull(incident.getFatalities(), invalidIncidents.invalidFatalities, summary, List::add);
-            validateNotNull(incident.getInjuries(), invalidIncidents.invalidInjuries, summary, List::add);
+            validateIncident(incident, summary);
         }
         return incidentSummaryList;
+    }
+
+    private void validateIncident(IncidentDetails incident, IncidentSummary summary) {
+        validateByRange(incident.getIncidentYear(), 1990, 2015, invalidIncidents.invalidYears, summary, List::add);
+        validateByRange(incident.getIncidentMonth(), 1, 12, invalidIncidents.invalidMonths, summary, List::add);
+        validateByRange(incident.getIncidentDay(), 1, 31, invalidIncidents.invalidDays, summary, List::add);
+        validateByValue(incident.getAircraft(), "UNKNOWN", invalidIncidents.invalidAircraft, summary, List::add);
+        validateNotNull(incident.getAircraftMass(), invalidIncidents.invalidAircraftMass, summary, List::add);
+        validateNotNull(incident.getEngines(), invalidIncidents.invalidEngines, summary, List::add);
+        validateByRegex(incident.getAirportId(), "-?\\d+(\\.\\d+)?", invalidIncidents.invalidAirportIds, summary, List::add);
+        validateByRegex(incident.getAirportId(), "UNKN", invalidIncidents.invalidAirportIds, summary, List::add);
+        validateNotEmpty(incident.getAirport(), invalidIncidents.invalidAirportNames, summary, List::add);
+        validateNotEmpty(incident.getState(), invalidIncidents.invalidStates, summary, List::add);
+        validateNotEmpty(incident.getFaaRegion(), invalidIncidents.invalidFaaRegions, summary, List::add);
+        validateNotNull(incident.getWarningIssued(), invalidIncidents.invalidWarningIssued, summary, List::add);
+        validateNotEmpty(incident.getFlightPhase(), invalidIncidents.invalidFlightPhases, summary, List::add);
+        validateByValue(incident.getSpeciesId(), "100000000000", invalidIncidents.invalidSpeciesIds, summary, List::add);
+        validateNotEmpty(incident.getSpeciesName(), invalidIncidents.invalidSpeciesNames, summary, List::add);
+        validateNotEmpty(incident.getSpeciesQuantity(), invalidIncidents.invalidSpeciesQuantities, summary, List::add);
+        validateNotNull(incident.getFatalities(), invalidIncidents.invalidFatalities, summary, List::add);
+        validateNotNull(incident.getInjuries(), invalidIncidents.invalidInjuries, summary, List::add);
     }
 
     private Pair<Integer, Integer> parseSpeciesQuantity(String qty) {
