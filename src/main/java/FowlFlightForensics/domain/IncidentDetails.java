@@ -1,23 +1,27 @@
 package FowlFlightForensics.domain;
 
+import FowlFlightForensics.util.BaseComponent;
 import com.opencsv.bean.CsvBindByName;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+
 @Getter
 @Setter
-public class IncidentDetails {
+public class IncidentDetails extends BaseComponent {
     @CsvBindByName(column = "Record ID")
     private Integer recordId;
 
     @CsvBindByName(column = "Incident Year")
-    private Integer incidentYear;
+    private Integer year;
 
     @CsvBindByName(column = "Incident Month")
-    private Integer incidentMonth;
+    private Integer month;
 
     @CsvBindByName(column = "Incident Day")
-    private Integer incidentDay;
+    private Integer day;
 
     @CsvBindByName(column = "Operator ID")
     private String operatorId;
@@ -68,7 +72,7 @@ public class IncidentDetails {
     private String airportId;
 
     @CsvBindByName(column = "Airport")
-    private String airport;
+    private String airportName;
 
     @CsvBindByName(column = "State")
     private String state;
@@ -204,4 +208,16 @@ public class IncidentDetails {
 
     @CsvBindByName(column = "Other Damage")
     private Boolean otherDamage;
+
+    public Object getFieldValueByName(String fieldName) {
+        Object result = new ArrayList<>();
+        try {
+            Field f = getClass().getDeclaredField(fieldName);
+            f.setAccessible(true);
+            result = f.get(this);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            logger.error("Error attempting to retrieve field value by name: {}", fieldName, e);
+        }
+        return result;
+    }
 }

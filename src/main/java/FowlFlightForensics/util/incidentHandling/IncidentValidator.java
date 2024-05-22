@@ -4,6 +4,8 @@ import FowlFlightForensics.domain.IncidentDetails;
 import FowlFlightForensics.domain.IncidentSummary;
 import FowlFlightForensics.domain.InvalidIncidents;
 import FowlFlightForensics.util.BaseComponent;
+import FowlFlightForensics.util.incidentHandling.rules.*;
+import FowlFlightForensics.util.string.Transformer;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.stereotype.Component;
@@ -11,12 +13,36 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
 
 @Component
 public class IncidentValidator extends BaseComponent {
     public InvalidIncidents invalidIncidents;
+
+    @SuppressWarnings("unchecked") Map<String, ValidationRule<Object>> validationRules = Stream.of(new Object[][] {
+        { "Year", new RangeValidationRule(1990, 2015) },
+        { "Month", new RangeValidationRule(1, 12) },
+        { "Day", new RangeValidationRule(1, 31) },
+        { "Aircraft", new ValueValidationRule("UNKNOWN") },
+        { "AircraftMass", new NotNullValidationRule() },
+        { "Engines", new NotNullValidationRule() },
+        { "AirportId", new RegexValidationRule("-?\\d+(\\.\\d+)?") },
+        //{ "AirportId", new ValueValidationRule("UNKN") },
+        { "AirportName", new NotEmptyValidationRule() },
+        { "State", new NotEmptyValidationRule() },
+        { "FaaRegion", new NotEmptyValidationRule() },
+        { "WarningIssued", new NotNullValidationRule() },
+        { "FlightPhase", new NotEmptyValidationRule() },
+        { "SpeciesId", new ValueValidationRule("100000000000") },
+        //{ "SpeciesId", new ValueValidationRule("UNK") }
+        { "SpeciesName", new NotEmptyValidationRule() },
+        //{ "SpeciesName", new ValueValidationRule("UNKNOWN") },
+        { "SpeciesQuantity", new NotEmptyValidationRule() },
+        { "Fatalities", new NotNullValidationRule() },
+        { "Injuries", new NotNullValidationRule() }
+    }).collect(Collectors.toMap(data -> (String) data[0], data -> (ValidationRule<Object>) data[1]));
 
     public List<IncidentSummary> validateAndTransformIncidents(List<IncidentDetails> incidentDetails) {
         List<IncidentSummary> incidentSummaryList = validateAndGenerateSummary(incidentDetails);
@@ -39,6 +65,7 @@ public class IncidentValidator extends BaseComponent {
         return incidentSummaryList;
     }
 
+    // region [Object Validators]
     private List<IncidentSummary> validateAndGenerateSummary(List<IncidentDetails> incidentDetails) {
         List<IncidentSummary> incidentSummaryList = new ArrayList<>();
         invalidIncidents = new InvalidIncidents();
@@ -49,34 +76,22 @@ public class IncidentValidator extends BaseComponent {
             IncidentSummary summary = extractSummaryFromIncidentDetails(incident, qtyRange);
             incidentSummaryList.add(summary);
 
-            validateIncident(incident, summary);
+            validateIncidentFields(incident, summary);
         }
         return incidentSummaryList;
     }
 
-    private void validateIncident(IncidentDetails incident, IncidentSummary summary) {
-        validateByRange(incident.getIncidentYear(), 1990, 2015, invalidIncidents.invalidYears, summary, List::add);
-        validateByRange(incident.getIncidentMonth(), 1, 12, invalidIncidents.invalidMonths, summary, List::add);
-        validateByRange(incident.getIncidentDay(), 1, 31, invalidIncidents.invalidDays, summary, List::add);
-        validateByValue(incident.getAircraft(), "UNKNOWN", invalidIncidents.invalidAircraft, summary, List::add);
-        validateNotNull(incident.getAircraftMass(), invalidIncidents.invalidAircraftMass, summary, List::add);
-        validateNotNull(incident.getEngines(), invalidIncidents.invalidEngines, summary, List::add);
-        validateByRegex(incident.getAirportId(), "-?\\d+(\\.\\d+)?", invalidIncidents.invalidAirportIds, summary, List::add);
-        validateByRegex(incident.getAirportId(), "UNKN", invalidIncidents.invalidAirportIds, summary, List::add);
-        validateNotEmpty(incident.getAirport(), invalidIncidents.invalidAirportNames, summary, List::add);
-        validateNotEmpty(incident.getState(), invalidIncidents.invalidStates, summary, List::add);
-        validateNotEmpty(incident.getFaaRegion(), invalidIncidents.invalidFaaRegions, summary, List::add);
-        validateNotNull(incident.getWarningIssued(), invalidIncidents.invalidWarningIssued, summary, List::add);
-        validateNotEmpty(incident.getFlightPhase(), invalidIncidents.invalidFlightPhases, summary, List::add);
-        validateByValue(incident.getSpeciesId(), "100000000000", invalidIncidents.invalidSpeciesIds, summary, List::add);
-        //validateByValue(incident.getSpeciesId(), "UNK", invalidIncidents.invalidSpeciesIds, summary, List::add);
-        validateNotEmpty(incident.getSpeciesName(), invalidIncidents.invalidSpeciesNames, summary, List::add);
-        //validateByValue(incident.getSpeciesName(), "UNKNOWN", invalidIncidents.invalidSpeciesNames, summary, List::add);
-        validateNotEmpty(incident.getSpeciesQuantity(), invalidIncidents.invalidSpeciesQuantities, summary, List::add);
-        validateNotNull(incident.getFatalities(), invalidIncidents.invalidFatalities, summary, List::add);
-        validateNotNull(incident.getInjuries(), invalidIncidents.invalidInjuries, summary, List::add);
+    private void validateIncidentFields(IncidentDetails incident, IncidentSummary summary) {
+        for (String ruleName : validationRules.keySet().stream().toList()) {
+            validateField(incident.getFieldValueByName(Transformer.toLowerFirstChar(ruleName)),
+                    validationRules.get(ruleName),
+                    invalidIncidents.getFieldValueByName("invalid" + ruleName),
+                    summary, List::add);
+        }
     }
+    // endregion
 
+    // region [Transformers]
     private Pair<Integer, Integer> parseSpeciesQuantity(String qty) {
         Integer qtyMin = null;
         Integer qtyMax = null;
@@ -92,47 +107,24 @@ public class IncidentValidator extends BaseComponent {
     }
 
     private IncidentSummary extractSummaryFromIncidentDetails(IncidentDetails incident, Pair<Integer, Integer> qtyRange) {
-        return new IncidentSummary(incident.getRecordId(), incident.getIncidentYear(),
-                incident.getIncidentMonth(), incident.getIncidentDay(), incident.getAircraft(),
-                incident.getAircraftMass(), incident.getEngines(), incident.getAirportId(), incident.getAirport(),
+        return new IncidentSummary(incident.getRecordId(), incident.getYear(),
+                incident.getMonth(), incident.getDay(), incident.getAircraft(),
+                incident.getAircraftMass(), incident.getEngines(), incident.getAirportId(), incident.getAirportName(),
                 incident.getState(), incident.getFaaRegion(), incident.getWarningIssued(), incident.getFlightPhase(),
                 incident.getSpeciesId(), incident.getSpeciesName(), qtyRange.getKey(), qtyRange.getValue(),
                 incident.getFatalities(), incident.getInjuries(), incident.getAircraftDamage());
     }
+    // endregion
 
-    // region [Validation]
+    // region [Value Validators]
     @FunctionalInterface
     interface AddingFunction<T, R> {
         void add(T target, R value);
     }
 
-    private <T, R> void validateByRange(Integer value, Integer start, Integer end, T obj, R summary,
-                                        AddingFunction<T, R> func) {
-        if (value < start || value > end) {
-            func.add(obj, summary);
-        }
-    }
-
-    private <T, R> void validateByValue(String value, String toCompare, T obj, R summary, AddingFunction<T, R> func) {
-        if (value.contains(toCompare)) {
-            func.add(obj, summary);
-        }
-    }
-
-    private <T, R> void validateByRegex(String value, String regex, T obj, R summary, AddingFunction<T, R> func) {
-        if (value.matches(regex)) {
-            func.add(obj, summary);
-        }
-    }
-
-    private <T, R> void validateNotNull(Object value, T obj, R summary, AddingFunction<T, R> func) {
-        if (value == null) {
-            func.add(obj, summary);
-        }
-    }
-
-    private <T, R> void validateNotEmpty(String value, T obj, R summary, AddingFunction<T, R> func) {
-        if (value.isEmpty()) {
+    private <T, R> void validateField(Object value, ValidationRule<Object> rule, T obj, R summary,
+                                      AddingFunction<T, R> func) {
+        if (rule != null && !rule.isValid(value)) {
             func.add(obj, summary);
         }
     }
