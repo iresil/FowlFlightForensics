@@ -8,7 +8,6 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.stereotype.Component;
 
-import java.lang.reflect.Field;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -17,40 +16,25 @@ import static java.util.stream.Collectors.*;
 
 @Component
 public class IncidentValidator extends BaseComponent {
-    private final float MISSING_THRESHOLD = 0.03f;
-
     public InvalidIncidents invalidIncidents;
 
     public List<IncidentSummary> validateAndTransformIncidents(List<IncidentDetails> incidentDetails) {
         List<IncidentSummary> incidentSummaryList = validateAndGenerateSummary(incidentDetails);
 
-        Map<String, Set<IncidentSummary>> incidentsToCheck = new HashMap<>();
-        Field[] fields = invalidIncidents.getClass().getDeclaredFields();
-        for (Field f : fields) {
-            try {
-                if (f.getType() == List.class) {
-                    List<IncidentSummary> incidentSummary = (List<IncidentSummary>)f.get(invalidIncidents);
-                    if (!incidentSummary.isEmpty() && incidentSummary.size() < incidentSummaryList.size() * MISSING_THRESHOLD) {
-                        incidentsToCheck.put(f.getName(), new HashSet<>(((List<IncidentSummary>)f.get(invalidIncidents))));
-                    }
-                }
-            } catch (IllegalAccessException e) {
-                logger.error("Error attempting to retrieve InvalidIncidents fields", e);
-            }
-        }
+        Map<String, Set<IncidentSummary>> invalidIncidentsTrimmedMap = invalidIncidents.toTrimmedMap(incidentSummaryList.size());
 
-        Map<String, Set<String>> airports = extractKeyValuePairs(incidentSummaryList, IncidentSummary::airportId, IncidentSummary::airport);
-        Map<String, String> airportsMap = transformToMapOfStrings(airports);
-        Map<String, Set<String>> airportsToCheck = extractKeyValuePairs(incidentSummaryList, IncidentSummary::airport, IncidentSummary::airportId);
-        var multiCodeAirports = airportsToCheck.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()));
+        Map<String, Set<String>> airportIdToNamesMap = extractKeyValuePairs(incidentSummaryList, IncidentSummary::airportId, IncidentSummary::airport);
+        Map<String, String> airports = transformToMapOfStrings(airportIdToNamesMap);
+        Map<String, Set<String>> airportNameToIdsMap = extractKeyValuePairs(incidentSummaryList, IncidentSummary::airport, IncidentSummary::airportId);
+        var multiCodeAirports = airportNameToIdsMap.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()));
 
-        Map<String, Set<String>> species = extractKeyValuePairs(incidentSummaryList, IncidentSummary::speciesId, IncidentSummary::speciesName);
-        Map<String, String> speciesMap = transformToMapOfStrings(species);
-        Map<String, Set<String>> speciesToCheck = extractKeyValuePairs(incidentSummaryList, IncidentSummary::speciesName, IncidentSummary::speciesId);
-        var multiCodeSpecies = speciesToCheck.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()));
+        Map<String, Set<String>> speciesIdToNamesMap = extractKeyValuePairs(incidentSummaryList, IncidentSummary::speciesId, IncidentSummary::speciesName);
+        Map<String, String> species = transformToMapOfStrings(speciesIdToNamesMap);
+        Map<String, Set<String>> speciesNameToIdsMap = extractKeyValuePairs(incidentSummaryList, IncidentSummary::speciesName, IncidentSummary::speciesId);
+        var multiCodeSpecies = speciesNameToIdsMap.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()));
 
-        List<String> unknownSpeciesIds = speciesMap.keySet().stream().filter(i -> i.contains("UNK")).toList();
-        List<String> unknownSpeciesNames = speciesToCheck.keySet().stream().filter(i -> i.contains("UNKNOWN")).toList();
+        List<String> unknownSpeciesIds = species.keySet().stream().filter(i -> i.contains("UNK")).toList();
+        List<String> unknownSpeciesNames = speciesNameToIdsMap.keySet().stream().filter(i -> i.contains("UNKNOWN")).toList();
 
         return incidentSummaryList;
     }
