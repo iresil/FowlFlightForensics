@@ -11,6 +11,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -46,16 +47,29 @@ public class IncidentValidator extends BaseComponent {
 
         Map<String, Set<IncidentSummary>> invalidIncidentsTrimmedMap = invalidIncidents.toTrimmedMap(incidentSummaryList.size());
 
+        logger.info("Comparing id-to-names with name-to-ids airport Maps, to see if other invalid information exists ...");
         Map<String, Set<String>> airportIdToNamesMap = extractKeyValuePairs(incidentSummaryList, IncidentSummary::airportId, IncidentSummary::airport);
-        Map<String, String> airports = transformToMapOfStrings(airportIdToNamesMap);
         Map<String, Set<String>> airportNameToIdsMap = extractKeyValuePairs(incidentSummaryList, IncidentSummary::airport, IncidentSummary::airportId);
-        var multiCodeAirports = airportNameToIdsMap.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()));
+        List<Entry<String, Set<String>>> multiCodeAirports = null;
+        if (airportIdToNamesMap.size() > airportNameToIdsMap.size()) {
+            multiCodeAirports = airportNameToIdsMap.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()));
+        } else {
+            multiCodeAirports = airportIdToNamesMap.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()));
+        }
+        Map<String, String> airports = transformToMapOfStrings(airportIdToNamesMap);
 
+        logger.info("Comparing id-to-names with name-to-ids species Maps, to see if other invalid information exists ...");
         Map<String, Set<String>> speciesIdToNamesMap = extractKeyValuePairs(incidentSummaryList, IncidentSummary::speciesId, IncidentSummary::speciesName);
-        Map<String, String> species = transformToMapOfStrings(speciesIdToNamesMap);
         Map<String, Set<String>> speciesNameToIdsMap = extractKeyValuePairs(incidentSummaryList, IncidentSummary::speciesName, IncidentSummary::speciesId);
-        var multiCodeSpecies = speciesNameToIdsMap.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()));
+        List<Entry<String, Set<String>>> multiCodeSpecies = null;
+        if (speciesIdToNamesMap.size() > speciesNameToIdsMap.size()) {
+            multiCodeSpecies = speciesNameToIdsMap.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()));
+        } else {
+            multiCodeSpecies = speciesIdToNamesMap.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()));
+        }
+        Map<String, String> species = transformToMapOfStrings(speciesIdToNamesMap);
 
+        logger.info("Getting distinct lists of unknown species ids and names ...");
         List<String> unknownSpeciesIds = species.keySet().stream().filter(i -> i.contains("UNK")).toList();
         List<String> unknownSpeciesNames = speciesNameToIdsMap.keySet().stream().filter(i -> i.contains("UNKNOWN")).toList();
 
@@ -66,6 +80,7 @@ public class IncidentValidator extends BaseComponent {
     private List<IncidentSummary> validateAndGenerateSummary(List<IncidentDetails> incidentDetails) {
         List<IncidentSummary> incidentSummaryList = new ArrayList<>();
         invalidIncidents = new InvalidIncidents();
+        logger.info("Parsing ranges and calculating Summary ...");
         for (IncidentDetails incident : incidentDetails) {
             String qty = incident.getSpeciesQuantity();
             Pair<Integer, Integer> qtyRange = parseSpeciesQuantity(qty);
@@ -75,10 +90,12 @@ public class IncidentValidator extends BaseComponent {
 
             validateIncidentFields(incident, summary);
         }
+        logger.info("Summary generation and range parsing process finished.");
         return incidentSummaryList;
     }
 
     private void validateIncidentFields(IncidentDetails incident, IncidentSummary summary) {
+        logger.trace("Applying validation rules ...");
         for (String ruleName : validationRules.keySet().stream().toList()) {
             for (ValidationRule<Object> vr : validationRules.get(ruleName)) {
                 validateField(incident.getFieldValueByName(Transformer.toLowerFirstChar(ruleName)),
@@ -140,7 +157,7 @@ public class IncidentValidator extends BaseComponent {
         Map<String, String> result = null;
         if (param.values().stream().map(Set::size).noneMatch(i -> i > 1)) {
             result = param.entrySet().stream().collect(toMap(
-                    Map.Entry::getKey,
+                    Entry::getKey,
                     entry -> entry.getValue().stream().findFirst().orElse("")
             ));
         }

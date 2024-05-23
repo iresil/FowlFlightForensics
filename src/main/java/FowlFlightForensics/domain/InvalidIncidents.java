@@ -44,18 +44,21 @@ public class InvalidIncidents extends BaseComponent {
     public Map<String, Set<IncidentSummary>> toTrimmedMap(int totalIncidents) {
         Map<String, Set<IncidentSummary>> result = new HashMap<>();
         Field[] fields = this.getClass().getDeclaredFields();
+        logger.info("Generating Map of invalid incidents per type, trimmed to contain types with incident count less than {}% of total.", MISSING_THRESHOLD * 100);
         for (Field f : fields) {
             try {
                 if (f.getType() == List.class) {
                     @SuppressWarnings("unchecked") List<IncidentSummary> incidentSummary = (List<IncidentSummary>)f.get(this);
                     if (!incidentSummary.isEmpty() && incidentSummary.size() < totalIncidents * MISSING_THRESHOLD) {
                         result.put(f.getName(), new HashSet<>((incidentSummary)));
+                        logger.trace("{} added to trimmed map of invalid incidents.", f.getName());
                     }
                 }
             } catch (IllegalAccessException e) {
                 logger.error("Error attempting to retrieve InvalidIncidents fields", e);
             }
         }
+        logger.info("Generation of trimmed map containing invalid incidents has finished.");
         return result;
     }
 }
