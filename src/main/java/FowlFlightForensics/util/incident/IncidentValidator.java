@@ -20,8 +20,6 @@ import static java.util.stream.Collectors.*;
 
 @Component
 public class IncidentValidator extends BaseComponent {
-    public InvalidIncidents invalidIncidents;
-
     @SuppressWarnings("unchecked") Map<String, List<ValidationRule<Object>>> validationRules = Stream.of(new Object[][] {
         { "Year", List.of(new RangeValidationRule(1990, 2015)) },
         { "Month", List.of(new RangeValidationRule(1, 12)) },
@@ -42,10 +40,13 @@ public class IncidentValidator extends BaseComponent {
         { "Injuries", List.of(new NotNullValidationRule()) }
     }).collect(Collectors.toMap(data -> (String) data[0], data -> (List<ValidationRule<Object>>) data[1]));
 
+    public static Map<String, Set<IncidentSummary>> invalidIncidentsTrimmedMap;
+
+    private InvalidIncidents invalidIncidents;
+
     public List<IncidentSummary> validateAndTransformIncidents(List<IncidentDetails> incidentDetails) {
         List<IncidentSummary> incidentSummaryList = validateAndGenerateSummary(incidentDetails);
-
-        Map<String, Set<IncidentSummary>> invalidIncidentsTrimmedMap = invalidIncidents.toTrimmedMap(incidentSummaryList.size());
+        IncidentValidator.invalidIncidentsTrimmedMap = invalidIncidents.toTrimmedMap(incidentSummaryList.size());
 
         Map<String, String> airports = validateAndGenerateMap("airport", incidentSummaryList, IncidentSummary::airportId, IncidentSummary::airport);
         Map<String, String> species = validateAndGenerateMap("species", incidentSummaryList, IncidentSummary::speciesId, IncidentSummary::speciesName);
