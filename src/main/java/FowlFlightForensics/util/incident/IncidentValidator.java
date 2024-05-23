@@ -23,23 +23,23 @@ public class IncidentValidator extends BaseComponent {
     public InvalidIncidents invalidIncidents;
 
     @SuppressWarnings("unchecked") Map<String, List<ValidationRule<Object>>> validationRules = Stream.of(new Object[][] {
-        { "Year", List.of(new RangeValidationRule(1990, 2015))},
-        { "Month", List.of(new RangeValidationRule(1, 12))},
-        { "Day", List.of(new RangeValidationRule(1, 31))},
-        { "Aircraft", List.of(new ValueValidationRule("UNKNOWN"))},
-        { "AircraftMass", List.of(new NotNullValidationRule())},
-        { "Engines", List.of(new NotNullValidationRule())},
+        { "Year", List.of(new RangeValidationRule(1990, 2015)) },
+        { "Month", List.of(new RangeValidationRule(1, 12)) },
+        { "Day", List.of(new RangeValidationRule(1, 31)) },
+        { "Aircraft", List.of(new ValueValidationRule("UNKNOWN")) },
+        { "AircraftMass", List.of(new NotNullValidationRule()) },
+        { "Engines", List.of(new NotNullValidationRule()) },
         { "AirportId", List.of(new RegexValidationRule("-?\\d+(\\.\\d+)?"), new ValueValidationRule("UNKN")) },
-        { "AirportName", List.of(new NotEmptyValidationRule())},
-        { "State", List.of(new NotEmptyValidationRule())},
-        { "FaaRegion", List.of(new NotEmptyValidationRule())},
-        { "WarningIssued", List.of(new NotNullValidationRule())},
-        { "FlightPhase", List.of(new NotEmptyValidationRule())},
+        { "AirportName", List.of(new NotEmptyValidationRule()) },
+        { "State", List.of(new NotEmptyValidationRule()) },
+        { "FaaRegion", List.of(new NotEmptyValidationRule()) },
+        { "WarningIssued", List.of(new NotNullValidationRule()) },
+        { "FlightPhase", List.of(new NotEmptyValidationRule()) },
         { "SpeciesId", List.of(new ValueValidationRule("100000000000")/*, new ValueValidationRule("UNK")*/) },
         { "SpeciesName", List.of(new NotEmptyValidationRule()/*, new ValueValidationRule("UNKNOWN")*/) },
-        { "SpeciesQuantity", List.of(new NotEmptyValidationRule())},
-        { "Fatalities", List.of(new NotNullValidationRule())},
-        { "Injuries", List.of(new NotNullValidationRule())}
+        { "SpeciesQuantity", List.of(new NotEmptyValidationRule()) },
+        { "Fatalities", List.of(new NotNullValidationRule()) },
+        { "Injuries", List.of(new NotNullValidationRule()) }
     }).collect(Collectors.toMap(data -> (String) data[0], data -> (List<ValidationRule<Object>>) data[1]));
 
     public List<IncidentSummary> validateAndTransformIncidents(List<IncidentDetails> incidentDetails) {
@@ -47,31 +47,12 @@ public class IncidentValidator extends BaseComponent {
 
         Map<String, Set<IncidentSummary>> invalidIncidentsTrimmedMap = invalidIncidents.toTrimmedMap(incidentSummaryList.size());
 
-        logger.info("Comparing id-to-names with name-to-ids airport Maps, to see if other invalid information exists ...");
-        Map<String, Set<String>> airportIdToNamesMap = extractKeyValuePairs(incidentSummaryList, IncidentSummary::airportId, IncidentSummary::airport);
-        Map<String, Set<String>> airportNameToIdsMap = extractKeyValuePairs(incidentSummaryList, IncidentSummary::airport, IncidentSummary::airportId);
-        List<Entry<String, Set<String>>> multiCodeAirports = null;
-        if (airportIdToNamesMap.size() > airportNameToIdsMap.size()) {
-            multiCodeAirports = airportNameToIdsMap.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()));
-        } else {
-            multiCodeAirports = airportIdToNamesMap.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()));
-        }
-        Map<String, String> airports = transformToMapOfStrings(airportIdToNamesMap);
-
-        logger.info("Comparing id-to-names with name-to-ids species Maps, to see if other invalid information exists ...");
-        Map<String, Set<String>> speciesIdToNamesMap = extractKeyValuePairs(incidentSummaryList, IncidentSummary::speciesId, IncidentSummary::speciesName);
-        Map<String, Set<String>> speciesNameToIdsMap = extractKeyValuePairs(incidentSummaryList, IncidentSummary::speciesName, IncidentSummary::speciesId);
-        List<Entry<String, Set<String>>> multiCodeSpecies = null;
-        if (speciesIdToNamesMap.size() > speciesNameToIdsMap.size()) {
-            multiCodeSpecies = speciesNameToIdsMap.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()));
-        } else {
-            multiCodeSpecies = speciesIdToNamesMap.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()));
-        }
-        Map<String, String> species = transformToMapOfStrings(speciesIdToNamesMap);
+        Map<String, String> airports = validateAndGenerateMap("airport", incidentSummaryList, IncidentSummary::airportId, IncidentSummary::airport);
+        Map<String, String> species = validateAndGenerateMap("species", incidentSummaryList, IncidentSummary::speciesId, IncidentSummary::speciesName);
 
         logger.info("Getting distinct lists of unknown species ids and names ...");
         List<String> unknownSpeciesIds = species.keySet().stream().filter(i -> i.contains("UNK")).toList();
-        List<String> unknownSpeciesNames = speciesNameToIdsMap.keySet().stream().filter(i -> i.contains("UNKNOWN")).toList();
+        List<String> unknownSpeciesNames = species.values().stream().filter(i -> i.contains("UNKNOWN")).toList();
 
         return incidentSummaryList;
     }
@@ -104,6 +85,21 @@ public class IncidentValidator extends BaseComponent {
                         summary, List::add);
             }
         }
+    }
+
+    private <T> Map<String, String> validateAndGenerateMap(String type, List<T> list, Function<T, String> valueExtractor1, Function<T, String> valueExtractor2) {
+        logger.info("Comparing id-to-names with name-to-ids {} Maps, to see if other invalid information exists ...", type);
+        Map<String, Set<String>> idToNamesMap = extractKeyValuePairs(list, valueExtractor1, valueExtractor2);
+        Map<String, Set<String>> nameToIdsMap = extractKeyValuePairs(list, valueExtractor2, valueExtractor1);
+        Map<String, Set<String>> multiCodeCorrelations = null;
+        if (idToNamesMap.size() > nameToIdsMap.size()) {
+            multiCodeCorrelations = nameToIdsMap.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()))
+                    .stream().collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+        } else {
+            multiCodeCorrelations = idToNamesMap.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()))
+                    .stream().collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+        }
+        return transformToMapOfStrings(idToNamesMap);
     }
     // endregion
 
