@@ -1,4 +1,4 @@
-package FowlFlightForensics.util.incidentHandling.rules;
+package FowlFlightForensics.util.incident.rules;
 
 public class RangeValidationRule implements ValidationRule<Integer> {
     private final int min;

@@ -1,4 +1,4 @@
-package FowlFlightForensics.util.incidentHandling.rules;
+package FowlFlightForensics.util.incident.rules;
 
 public interface ValidationRule<T> {
     boolean isValid(T value);

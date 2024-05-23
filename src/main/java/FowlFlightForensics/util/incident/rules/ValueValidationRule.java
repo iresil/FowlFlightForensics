@@ -1,4 +1,4 @@
-package FowlFlightForensics.util.incidentHandling.rules;
+package FowlFlightForensics.util.incident.rules;
 
 public class ValueValidationRule implements ValidationRule<String> {
     private final String val;

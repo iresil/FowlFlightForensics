@@ -2,8 +2,8 @@ package FowlFlightForensics.service;
 
 import FowlFlightForensics.domain.IncidentDetails;
 import FowlFlightForensics.util.BaseComponent;
-import FowlFlightForensics.util.fileHandling.CsvReader;
-import FowlFlightForensics.util.incidentHandling.IncidentValidator;
+import FowlFlightForensics.util.file.CsvReader;
+import FowlFlightForensics.util.incident.IncidentValidator;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

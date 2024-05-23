@@ -1,4 +1,4 @@
-package FowlFlightForensics.util.fileHandling;
+package FowlFlightForensics.util.file;
 
 import FowlFlightForensics.domain.IncidentDetails;
 import FowlFlightForensics.util.BaseComponent;

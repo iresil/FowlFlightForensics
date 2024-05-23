@@ -1,10 +1,10 @@
-package FowlFlightForensics.util.incidentHandling;
+package FowlFlightForensics.util.incident;
 
 import FowlFlightForensics.domain.IncidentDetails;
 import FowlFlightForensics.domain.IncidentSummary;
 import FowlFlightForensics.domain.InvalidIncidents;
 import FowlFlightForensics.util.BaseComponent;
-import FowlFlightForensics.util.incidentHandling.rules.*;
+import FowlFlightForensics.util.incident.rules.*;
 import FowlFlightForensics.util.string.Transformer;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
