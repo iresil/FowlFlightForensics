@@ -21,28 +21,25 @@ import static java.util.stream.Collectors.*;
 public class IncidentValidator extends BaseComponent {
     public InvalidIncidents invalidIncidents;
 
-    @SuppressWarnings("unchecked") Map<String, ValidationRule<Object>> validationRules = Stream.of(new Object[][] {
-        { "Year", new RangeValidationRule(1990, 2015) },
-        { "Month", new RangeValidationRule(1, 12) },
-        { "Day", new RangeValidationRule(1, 31) },
-        { "Aircraft", new ValueValidationRule("UNKNOWN") },
-        { "AircraftMass", new NotNullValidationRule() },
-        { "Engines", new NotNullValidationRule() },
-        { "AirportId", new RegexValidationRule("-?\\d+(\\.\\d+)?") },
-        //{ "AirportId", new ValueValidationRule("UNKN") },
-        { "AirportName", new NotEmptyValidationRule() },
-        { "State", new NotEmptyValidationRule() },
-        { "FaaRegion", new NotEmptyValidationRule() },
-        { "WarningIssued", new NotNullValidationRule() },
-        { "FlightPhase", new NotEmptyValidationRule() },
-        { "SpeciesId", new ValueValidationRule("100000000000") },
-        //{ "SpeciesId", new ValueValidationRule("UNK") }
-        { "SpeciesName", new NotEmptyValidationRule() },
-        //{ "SpeciesName", new ValueValidationRule("UNKNOWN") },
-        { "SpeciesQuantity", new NotEmptyValidationRule() },
-        { "Fatalities", new NotNullValidationRule() },
-        { "Injuries", new NotNullValidationRule() }
-    }).collect(Collectors.toMap(data -> (String) data[0], data -> (ValidationRule<Object>) data[1]));
+    @SuppressWarnings("unchecked") Map<String, List<ValidationRule<Object>>> validationRules = Stream.of(new Object[][] {
+        { "Year", List.of(new RangeValidationRule(1990, 2015))},
+        { "Month", List.of(new RangeValidationRule(1, 12))},
+        { "Day", List.of(new RangeValidationRule(1, 31))},
+        { "Aircraft", List.of(new ValueValidationRule("UNKNOWN"))},
+        { "AircraftMass", List.of(new NotNullValidationRule())},
+        { "Engines", List.of(new NotNullValidationRule())},
+        { "AirportId", List.of(new RegexValidationRule("-?\\d+(\\.\\d+)?"), new ValueValidationRule("UNKN")) },
+        { "AirportName", List.of(new NotEmptyValidationRule())},
+        { "State", List.of(new NotEmptyValidationRule())},
+        { "FaaRegion", List.of(new NotEmptyValidationRule())},
+        { "WarningIssued", List.of(new NotNullValidationRule())},
+        { "FlightPhase", List.of(new NotEmptyValidationRule())},
+        { "SpeciesId", List.of(new ValueValidationRule("100000000000")/*, new ValueValidationRule("UNK")*/) },
+        { "SpeciesName", List.of(new NotEmptyValidationRule()/*, new ValueValidationRule("UNKNOWN")*/) },
+        { "SpeciesQuantity", List.of(new NotEmptyValidationRule())},
+        { "Fatalities", List.of(new NotNullValidationRule())},
+        { "Injuries", List.of(new NotNullValidationRule())}
+    }).collect(Collectors.toMap(data -> (String) data[0], data -> (List<ValidationRule<Object>>) data[1]));
 
     public List<IncidentSummary> validateAndTransformIncidents(List<IncidentDetails> incidentDetails) {
         List<IncidentSummary> incidentSummaryList = validateAndGenerateSummary(incidentDetails);
@@ -83,10 +80,12 @@ public class IncidentValidator extends BaseComponent {
 
     private void validateIncidentFields(IncidentDetails incident, IncidentSummary summary) {
         for (String ruleName : validationRules.keySet().stream().toList()) {
-            validateField(incident.getFieldValueByName(Transformer.toLowerFirstChar(ruleName)),
-                    validationRules.get(ruleName),
-                    invalidIncidents.getFieldValueByName("invalid" + ruleName),
-                    summary, List::add);
+            for (ValidationRule<Object> vr : validationRules.get(ruleName)) {
+                validateField(incident.getFieldValueByName(Transformer.toLowerFirstChar(ruleName)),
+                        vr,
+                        invalidIncidents.getFieldValueByName("invalid" + ruleName),
+                        summary, List::add);
+            }
         }
     }
     // endregion
