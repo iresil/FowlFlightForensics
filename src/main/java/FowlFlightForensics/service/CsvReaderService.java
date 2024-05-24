@@ -1,6 +1,7 @@
 package FowlFlightForensics.service;
 
 import FowlFlightForensics.domain.IncidentDetails;
+import FowlFlightForensics.domain.IncidentSummary;
 import FowlFlightForensics.util.BaseComponent;
 import FowlFlightForensics.util.file.CsvReader;
 import FowlFlightForensics.util.incident.IncidentValidator;
@@ -22,6 +23,6 @@ public class CsvReaderService extends BaseComponent {
     public void init() {
         List<IncidentDetails> allIncidents = csvReader.zippedCsvToListOfObjects();
         logger.info("Successfully retrieved {} incidents.", allIncidents.size());
-        incidentValidator.validateAndTransformIncidents(allIncidents);
+        List<IncidentSummary> incidentSummaryList = incidentValidator.validateAndTransformIncidents(allIncidents);
     }
 }

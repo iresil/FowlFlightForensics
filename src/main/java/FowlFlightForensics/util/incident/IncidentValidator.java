@@ -41,6 +41,10 @@ public class IncidentValidator extends BaseComponent {
     }).collect(Collectors.toMap(data -> (String) data[0], data -> (List<ValidationRule<Object>>) data[1]));
 
     public static Map<String, Set<IncidentSummary>> invalidIncidentsTrimmedMap;
+    public static Map<String, String> airports;
+    public static Map<String, String> species;
+    public static List<String> unknownSpeciesIds;
+    public static List<String> unknownSpeciesNames;
 
     private InvalidIncidents invalidIncidents;
 
@@ -48,12 +52,12 @@ public class IncidentValidator extends BaseComponent {
         List<IncidentSummary> incidentSummaryList = validateAndGenerateSummary(incidentDetails);
         IncidentValidator.invalidIncidentsTrimmedMap = invalidIncidents.toTrimmedMap(incidentSummaryList.size());
 
-        Map<String, String> airports = validateAndGenerateMap("airport", incidentSummaryList, IncidentSummary::airportId, IncidentSummary::airport);
-        Map<String, String> species = validateAndGenerateMap("species", incidentSummaryList, IncidentSummary::speciesId, IncidentSummary::speciesName);
+        IncidentValidator.airports = validateAndGenerateMap("airport", incidentSummaryList, IncidentSummary::airportId, IncidentSummary::airport);
+        IncidentValidator.species = validateAndGenerateMap("species", incidentSummaryList, IncidentSummary::speciesId, IncidentSummary::speciesName);
 
         logger.info("Getting distinct lists of unknown species ids and names ...");
-        List<String> unknownSpeciesIds = species.keySet().stream().filter(i -> i.contains("UNK")).toList();
-        List<String> unknownSpeciesNames = species.values().stream().filter(i -> i.contains("UNKNOWN")).toList();
+        IncidentValidator.unknownSpeciesIds = species.keySet().stream().filter(i -> i.contains("UNK")).toList();
+        IncidentValidator.unknownSpeciesNames = species.values().stream().filter(i -> i.contains("UNKNOWN")).toList();
 
         return incidentSummaryList;
     }
@@ -95,10 +99,12 @@ public class IncidentValidator extends BaseComponent {
         Map<String, Set<String>> multiCodeCorrelations = null;
         if (idToNamesMap.size() > nameToIdsMap.size()) {
             multiCodeCorrelations = nameToIdsMap.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()))
-                    .stream().collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+                    .stream().collect(toMap(Entry::getKey, Entry::getValue));
+            logger.warn("Checking {} Maps found {} in [nameToIdsMap]", type, multiCodeCorrelations.toString());
         } else {
             multiCodeCorrelations = idToNamesMap.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()))
-                    .stream().collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+                    .stream().collect(toMap(Entry::getKey, Entry::getValue));
+            logger.warn("Checking {} Maps found {} in [idToNamesMap]", type, multiCodeCorrelations.toString());
         }
         return transformToMapOfStrings(idToNamesMap);
     }
