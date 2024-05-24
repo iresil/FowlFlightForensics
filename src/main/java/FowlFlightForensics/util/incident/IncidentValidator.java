@@ -20,7 +20,7 @@ import static java.util.stream.Collectors.*;
 
 @Component
 public class IncidentValidator extends BaseComponent {
-    @SuppressWarnings("unchecked") Map<String, List<ValidationRule<Object>>> validationRules = Stream.of(new Object[][] {
+    @SuppressWarnings("unchecked") private final Map<String, List<ValidationRule<Object>>> validationRules = Stream.of(new Object[][] {
         { "Year", List.of(new RangeValidationRule(1990, 2015)) },
         { "Month", List.of(new RangeValidationRule(1, 12)) },
         { "Day", List.of(new RangeValidationRule(1, 31)) },
@@ -40,26 +40,25 @@ public class IncidentValidator extends BaseComponent {
         { "Injuries", List.of(new NotNullValidationRule()) }
     }).collect(Collectors.toMap(data -> (String) data[0], data -> (List<ValidationRule<Object>>) data[1]));
 
-    public static Map<String, Set<IncidentSummary>> invalidIncidentsTrimmedMap;
-    public static Map<String, String> airports;
-    public static Map<String, String> species;
-    public static List<String> unknownSpeciesIds;
-    public static List<String> unknownSpeciesNames;
+    public List<IncidentSummary> incidentSummaryList;
+    public Map<String, Set<IncidentSummary>> invalidIncidentsTrimmedMap;
+    public Map<String, String> airports;
+    public Map<String, String> species;
+    public List<String> unknownSpeciesIds;
+    public List<String> unknownSpeciesNames;
 
     private InvalidIncidents invalidIncidents;
 
-    public List<IncidentSummary> validateAndTransformIncidents(List<IncidentDetails> incidentDetails) {
-        List<IncidentSummary> incidentSummaryList = validateAndGenerateSummary(incidentDetails);
-        IncidentValidator.invalidIncidentsTrimmedMap = invalidIncidents.toTrimmedMap(incidentSummaryList.size());
+    public void validateAndTransformIncidents(List<IncidentDetails> incidentDetails) {
+        incidentSummaryList = validateAndGenerateSummary(incidentDetails);
+        invalidIncidentsTrimmedMap = invalidIncidents.toTrimmedMap(incidentSummaryList.size());
 
-        IncidentValidator.airports = validateAndGenerateMap("airport", incidentSummaryList, IncidentSummary::airportId, IncidentSummary::airport);
-        IncidentValidator.species = validateAndGenerateMap("species", incidentSummaryList, IncidentSummary::speciesId, IncidentSummary::speciesName);
+        airports = validateAndGenerateMap("airport", incidentSummaryList, IncidentSummary::airportId, IncidentSummary::airport);
+        species = validateAndGenerateMap("species", incidentSummaryList, IncidentSummary::speciesId, IncidentSummary::speciesName);
 
         logger.info("Getting distinct lists of unknown species ids and names ...");
-        IncidentValidator.unknownSpeciesIds = species.keySet().stream().filter(i -> i.contains("UNK")).toList();
-        IncidentValidator.unknownSpeciesNames = species.values().stream().filter(i -> i.contains("UNKNOWN")).toList();
-
-        return incidentSummaryList;
+        unknownSpeciesIds = species.keySet().stream().filter(i -> i.contains("UNK")).toList();
+        unknownSpeciesNames = species.values().stream().filter(i -> i.contains("UNKNOWN")).toList();
     }
 
     // region [Object Validators]
