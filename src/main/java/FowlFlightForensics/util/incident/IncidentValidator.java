@@ -5,7 +5,7 @@ import FowlFlightForensics.domain.IncidentSummary;
 import FowlFlightForensics.domain.InvalidIncidents;
 import FowlFlightForensics.util.BaseComponent;
 import FowlFlightForensics.util.incident.rules.*;
-import FowlFlightForensics.util.string.Transformer;
+import FowlFlightForensics.util.string.CaseTransformer;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.stereotype.Component;
@@ -83,7 +83,7 @@ public class IncidentValidator extends BaseComponent {
         logger.trace("Applying validation rules ...");
         for (String ruleName : validationRules.keySet().stream().toList()) {
             for (ValidationRule<Object> vr : validationRules.get(ruleName)) {
-                validateField(incident.getFieldValueByName(Transformer.toLowerFirstChar(ruleName)),
+                validateField(incident.getFieldValueByName(CaseTransformer.toLowerFirstChar(ruleName)),
                         vr,
                         invalidIncidents.getFieldValueByName("invalid" + ruleName),
                         summary, List::add);

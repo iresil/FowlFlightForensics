@@ -1,7 +1,9 @@
 package FowlFlightForensics.domain;
 
 import FowlFlightForensics.util.BaseComponent;
+import FowlFlightForensics.util.string.UppercaseConverter;
 import com.opencsv.bean.CsvBindByName;
+import com.opencsv.bean.CsvCustomBindByName;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -101,7 +103,7 @@ public class IncidentDetails extends BaseComponent {
     @CsvBindByName(column = "Distance")
     private Float distance;
 
-    @CsvBindByName(column = "Species ID")
+    @CsvCustomBindByName(column = "Species ID", converter = UppercaseConverter.class)
     private String speciesId;
 
     @CsvBindByName(column = "Species Name")
