@@ -13,7 +13,6 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
@@ -38,7 +37,7 @@ public class IncidentValidator extends BaseComponent {
         { "SpeciesQuantity", List.of(new NotEmptyValidationRule()) },
         { "Fatalities", List.of(new NotNullValidationRule()) },
         { "Injuries", List.of(new NotNullValidationRule()) }
-    }).collect(Collectors.toMap(data -> (String) data[0], data -> (List<ValidationRule<Object>>) data[1]));
+    }).collect(toMap(data -> (String) data[0], data -> (List<ValidationRule<Object>>) data[1]));
 
     public List<IncidentSummary> incidentSummaryList;
     public Map<String, Set<IncidentSummary>> invalidIncidentsTrimmedMap;
@@ -46,6 +45,7 @@ public class IncidentValidator extends BaseComponent {
     public Map<String, String> species;
     public List<String> unknownSpeciesIds;
     public List<String> unknownSpeciesNames;
+    public Map<String, Map<String, Set<String>>> multiCodeCorrelations;
 
     private InvalidIncidents invalidIncidents;
 
@@ -95,14 +95,16 @@ public class IncidentValidator extends BaseComponent {
         logger.info("Comparing id-to-names with name-to-ids {} Maps, to see if other invalid information exists ...", type);
         Map<String, Set<String>> idToNamesMap = extractKeyValuePairs(list, valueExtractor1, valueExtractor2);
         Map<String, Set<String>> nameToIdsMap = extractKeyValuePairs(list, valueExtractor2, valueExtractor1);
-        Map<String, Set<String>> multiCodeCorrelations = null;
+        if (multiCodeCorrelations == null && idToNamesMap.size() != nameToIdsMap.size()) {
+            multiCodeCorrelations = new HashMap<>();
+        }
         if (idToNamesMap.size() > nameToIdsMap.size()) {
-            multiCodeCorrelations = nameToIdsMap.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()))
-                    .stream().collect(toMap(Entry::getKey, Entry::getValue));
+            multiCodeCorrelations.put(type, nameToIdsMap.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()))
+                    .stream().collect(toMap(Entry::getKey, Entry::getValue)));
             logger.warn("Checking {} Maps found {} in [nameToIdsMap]", type, multiCodeCorrelations.toString());
-        } else {
-            multiCodeCorrelations = idToNamesMap.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()))
-                    .stream().collect(toMap(Entry::getKey, Entry::getValue));
+        } else if (idToNamesMap.size() < nameToIdsMap.size()) {
+            multiCodeCorrelations.put(type, idToNamesMap.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()))
+                    .stream().collect(toMap(Entry::getKey, Entry::getValue)));
             logger.warn("Checking {} Maps found {} in [idToNamesMap]", type, multiCodeCorrelations.toString());
         }
         return transformToMapOfStrings(idToNamesMap);
@@ -152,7 +154,7 @@ public class IncidentValidator extends BaseComponent {
     private <T, K, V> Map<K, Set<V>> extractKeyValuePairs(List<T> list, Function<T, K> keyExtractor,
                                                                Function<T, V> valueExtractor) {
         return list.stream()
-                .collect(groupingBy(keyExtractor, Collectors.mapping(valueExtractor, Collectors.toSet())));
+                .collect(groupingBy(keyExtractor, mapping(valueExtractor, toSet())));
     }
 
     private Map<String, String> transformToMapOfStrings(Map<String, Set<String>> param) {
