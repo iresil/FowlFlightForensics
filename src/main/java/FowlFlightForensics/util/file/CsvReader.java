@@ -16,6 +16,7 @@ import java.util.zip.GZIPInputStream;
 
 @Component
 public class CsvReader extends BaseComponent {
+    @Deprecated
     public List<List<String>> zippedCsvToListOfStringValues() {
         List<List<String>> records = new ArrayList<>();
         try (GZIPInputStream gZIPInputStream = new GZIPInputStream(new FileInputStream("data/dataset.gz"));) {

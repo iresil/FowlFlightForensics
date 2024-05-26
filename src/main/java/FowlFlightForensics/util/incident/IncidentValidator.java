@@ -6,6 +6,8 @@ import FowlFlightForensics.domain.InvalidIncidents;
 import FowlFlightForensics.util.BaseComponent;
 import FowlFlightForensics.util.incident.rules.*;
 import FowlFlightForensics.util.string.CaseTransformer;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.stereotype.Component;
@@ -18,6 +20,8 @@ import java.util.stream.Stream;
 import static java.util.stream.Collectors.*;
 
 @Component
+@Getter
+@Setter
 public class IncidentValidator extends BaseComponent {
     @SuppressWarnings("unchecked") private final Map<String, List<ValidationRule<Object>>> validationRules = Stream.of(new Object[][] {
         { "Year", List.of(new RangeValidationRule(1990, 2015)) },
@@ -39,21 +43,21 @@ public class IncidentValidator extends BaseComponent {
         { "Injuries", List.of(new NotNullValidationRule()) }
     }).collect(toMap(data -> (String) data[0], data -> (List<ValidationRule<Object>>) data[1]));
 
-    public List<IncidentSummary> incidentSummaryList;
-    public Map<String, Set<IncidentSummary>> invalidIncidentsTrimmedMap;
-    public Map<String, String> airports;
-    public Map<String, String> species;
-    public List<String> unknownSpeciesIds;
-    public List<String> unknownSpeciesNames;
-    public Map<String, Map<String, Set<String>>> multiCodeCorrelations;
+    public List<IncidentSummary> incidentSummaryList = new ArrayList<>();
+    public Map<String, Set<IncidentSummary>> invalidIncidentsTrimmedMap = new HashMap<>();
+    public Map<String, String> airports = new HashMap<>();
+    public Map<String, String> species = new HashMap<>();
+    public List<String> unknownSpeciesIds = new ArrayList<>();
+    public List<String> unknownSpeciesNames = new ArrayList<>();
+    public Map<String, Map<String, Set<String>>> multiCodeCorrelations = new HashMap<>();
 
-    private InvalidIncidents invalidIncidents;
+    private InvalidIncidents invalidIncidents = new InvalidIncidents();
 
     public void validateAndTransformIncidents(List<IncidentDetails> incidentDetails) {
         incidentSummaryList = validateAndGenerateSummary(incidentDetails);
         invalidIncidentsTrimmedMap = invalidIncidents.toTrimmedMap(incidentSummaryList.size());
 
-        airports = validateAndGenerateMap("airport", incidentSummaryList, IncidentSummary::airportId, IncidentSummary::airport);
+        airports = validateAndGenerateMap("airports", incidentSummaryList, IncidentSummary::airportId, IncidentSummary::airport);
         species = validateAndGenerateMap("species", incidentSummaryList, IncidentSummary::speciesId, IncidentSummary::speciesName);
 
         logger.info("Getting distinct lists of unknown species ids and names ...");
@@ -64,7 +68,6 @@ public class IncidentValidator extends BaseComponent {
     // region [Object Validators]
     private List<IncidentSummary> validateAndGenerateSummary(List<IncidentDetails> incidentDetails) {
         List<IncidentSummary> incidentSummaryList = new ArrayList<>();
-        invalidIncidents = new InvalidIncidents();
         logger.info("Parsing ranges and calculating Summary ...");
         for (IncidentDetails incident : incidentDetails) {
             String qty = incident.getSpeciesQuantity();
@@ -95,17 +98,14 @@ public class IncidentValidator extends BaseComponent {
         logger.info("Comparing id-to-names with name-to-ids {} Maps, to see if other invalid information exists ...", type);
         Map<String, Set<String>> idToNamesMap = extractKeyValuePairs(list, valueExtractor1, valueExtractor2);
         Map<String, Set<String>> nameToIdsMap = extractKeyValuePairs(list, valueExtractor2, valueExtractor1);
-        if (multiCodeCorrelations == null && idToNamesMap.size() != nameToIdsMap.size()) {
-            multiCodeCorrelations = new HashMap<>();
-        }
         if (idToNamesMap.size() > nameToIdsMap.size()) {
             multiCodeCorrelations.put(type, nameToIdsMap.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()))
                     .stream().collect(toMap(Entry::getKey, Entry::getValue)));
-            logger.warn("Checking {} Maps found {} in [nameToIdsMap]", type, multiCodeCorrelations.toString());
+            logger.warn("Checking {} Maps found {} in [nameToIdsMap]", type, multiCodeCorrelations.get(type).toString());
         } else if (idToNamesMap.size() < nameToIdsMap.size()) {
             multiCodeCorrelations.put(type, idToNamesMap.entrySet().stream().collect(filtering(i -> i.getValue().size() > 1, toList()))
                     .stream().collect(toMap(Entry::getKey, Entry::getValue)));
-            logger.warn("Checking {} Maps found {} in [idToNamesMap]", type, multiCodeCorrelations.toString());
+            logger.warn("Checking {} Maps found {} in [idToNamesMap]", type, multiCodeCorrelations.get(type).toString());
         }
         return transformToMapOfStrings(idToNamesMap);
     }
