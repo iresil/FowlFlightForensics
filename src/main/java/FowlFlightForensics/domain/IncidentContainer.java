@@ -1,5 +1,6 @@
 package FowlFlightForensics.domain;
 
+import FowlFlightForensics.enums.MappingType;
 import FowlFlightForensics.util.incident.IncidentValidator;
 
 import java.util.List;
@@ -43,7 +44,7 @@ public enum IncidentContainer {
         return incidentValidator.getSpecies();
     }
 
-    public Map<String, Map<String, Set<String>>> getMultiCodeCorrelations() {
+    public Map<MappingType, Map<String, Set<String>>> getMultiCodeCorrelations() {
         return incidentValidator.getMultiCodeCorrelations();
     }
 }

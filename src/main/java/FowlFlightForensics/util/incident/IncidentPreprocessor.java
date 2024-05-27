@@ -1,6 +1,7 @@
 package FowlFlightForensics.util.incident;
 
 import FowlFlightForensics.domain.IncidentSummary;
+import FowlFlightForensics.enums.MappingType;
 import FowlFlightForensics.util.BaseComponent;
 import org.springframework.stereotype.Component;
 
@@ -11,21 +12,21 @@ import static java.util.Map.*;
 @Component
 public class IncidentPreprocessor extends BaseComponent {
     public List<IncidentSummary> applyTransformations(List<IncidentSummary> incidentSummaryList, Map<String, String> airports,
-                                                      Map<String, String> species, Map<String, Map<String, Set<String>>> multiCodeCorrelations) {
-        for (Entry<String, Map<String, Set<String>>> set : multiCodeCorrelations.entrySet()) {
-            String typeKey = set.getKey();
+                                                      Map<String, String> species, Map<MappingType, Map<String, Set<String>>> multiCodeCorrelations) {
+        for (Entry<MappingType, Map<String, Set<String>>> set : multiCodeCorrelations.entrySet()) {
+            MappingType typeKey = set.getKey();
             Map<String, Set<String>> multiCodeCorrelation = set.getValue();
 
-            Map<String, Boolean> isIdToNameMap = checkMultiCodeCorrelationTypes(multiCodeCorrelation, typeKey, airports,
+            Map<MappingType, Boolean> isIdToNameMap = checkMultiCodeCorrelationTypes(multiCodeCorrelation, typeKey, airports,
                     species);
 
             for (int i = 0; i < incidentSummaryList.size(); i++) {
                 IncidentSummary obj = incidentSummaryList.get(i);
                 Boolean isIdToName = isIdToNameMap.get(typeKey);
                 Map<String, String> mapping = new HashMap<>();
-                if (typeKey.equals("airports")) {
+                if (typeKey.equals(MappingType.AIRPORTS)) {
                     mapping = airports;
-                } else if (typeKey.equals("species")) {
+                } else if (typeKey.equals(MappingType.SPECIES)) {
                     mapping = species;
                 }
                 replaceIncidentInList(typeKey, isIdToName, multiCodeCorrelation, mapping, incidentSummaryList, i, obj,
@@ -35,10 +36,10 @@ public class IncidentPreprocessor extends BaseComponent {
         return incidentSummaryList;
     }
 
-    private Map<String, Boolean> checkMultiCodeCorrelationTypes(Map<String, Set<String>> multiCodeCorrelation,
-                                                                String type, Map<String, String> airports,
-                                                                Map<String, String> species) {
-        Map<String, Boolean> isIdToNameMap = new HashMap<>();
+    private Map<MappingType, Boolean> checkMultiCodeCorrelationTypes(Map<String, Set<String>> multiCodeCorrelation,
+                                                                     MappingType type, Map<String, String> airports,
+                                                                     Map<String, String> species) {
+        Map<MappingType, Boolean> isIdToNameMap = new HashMap<>();
         for (Entry<String, Set<String>> innerSet : multiCodeCorrelation.entrySet()) {
             String key = innerSet.getKey();
             Set<String> value = innerSet.getValue();
@@ -51,7 +52,7 @@ public class IncidentPreprocessor extends BaseComponent {
         return isIdToNameMap;
     }
 
-    private Boolean checkIfMapIsIdToName(String type, Map<String, String> airports, Map<String, String> species,
+    private Boolean checkIfMapIsIdToName(MappingType type, Map<String, String> airports, Map<String, String> species,
                                          String key, Set<String> value) {
         Boolean isIdToName = null;
         for (String val : value) {
@@ -68,17 +69,17 @@ public class IncidentPreprocessor extends BaseComponent {
         return isIdToName;
     }
 
-    private Boolean checkIfValueIsId(String type, Map<String, String> airports, Map<String, String> species,
-                                    String key, String val) {
+    private Boolean checkIfValueIsId(MappingType type, Map<String, String> airports, Map<String, String> species,
+                                     String key, String val) {
         Boolean itemIsId = null;
         boolean keyIsId = false, keyIsValue = false, valueIsId = false, valueIsValue = false;
-        if (type.equals("airports")) {
+        if (type.equals(MappingType.AIRPORTS)) {
             keyIsId = airports.containsKey(key);
             keyIsValue = airports.containsValue(key);
 
             valueIsId = airports.containsKey(val);
             valueIsValue = airports.containsValue(val);
-        } else if (type.equals("species")) {
+        } else if (type.equals(MappingType.SPECIES)) {
             keyIsId = species.containsKey(key);
             keyIsValue = species.containsValue(key);
 
@@ -105,9 +106,9 @@ public class IncidentPreprocessor extends BaseComponent {
     }
 
     @SuppressWarnings("unchecked")
-    private <T, K, V> void replaceIncidentInList(String type, Boolean isIdToNameMap, Map<String, Set<String>> multiCodeCorrelation,
-                                              Map<String, String> mapping, T incidentSummaryList, K i, V incidentSummary,
-                                              SettingFunction<T, K, V> func) {
+    private <T, K, V> void replaceIncidentInList(MappingType type, Boolean isIdToNameMap, Map<String, Set<String>> multiCodeCorrelation,
+                                                 Map<String, String> mapping, T incidentSummaryList, K i, V incidentSummary,
+                                                 SettingFunction<T, K, V> func) {
         for (String k : multiCodeCorrelation.keySet()) {
             String largestCode = "";
             boolean alreadyReplaced = false;
@@ -132,21 +133,21 @@ public class IncidentPreprocessor extends BaseComponent {
         }
     }
 
-    private IncidentSummary switchIdsAndNames(String type, Boolean isIdToNameMap, IncidentSummary incidentSummary,
+    private IncidentSummary switchIdsAndNames(MappingType type, Boolean isIdToNameMap, IncidentSummary incidentSummary,
                                               Map<String, String> mapping, String val) {
         String newKey = null;
         String newValue = null;
         if (isIdToNameMap
-                && ((type.equals("airports") && incidentSummary.airport().equals(val))
-                    || type.equals("species") && incidentSummary.speciesName().equals(val))) {  // val is id, treated as a name
+                && ((type.equals(MappingType.AIRPORTS) && incidentSummary.airport().equals(val))
+                    || type.equals(MappingType.SPECIES) && incidentSummary.speciesName().equals(val))) {  // val is id, treated as a name
             String entry = mapping.get(val);  // Find the actual name to replace val
             if (entry != null) {
                 newKey = val;
                 newValue = entry;
             }
         } else if (!isIdToNameMap
-                && ((type.equals("airports") && incidentSummary.airportId().equals(val))
-                    || (type.equals("species") && incidentSummary.speciesId().equals(val)))) {  // val is name, treated as an id
+                && ((type.equals(MappingType.AIRPORTS) && incidentSummary.airportId().equals(val))
+                    || (type.equals(MappingType.SPECIES) && incidentSummary.speciesId().equals(val)))) {  // val is name, treated as an id
             // Look up val as name, and retrieve the entry, if present
             Optional<Entry<String, String>> entry = mapping.entrySet().stream().filter(item -> item.getValue().equals(val)).findFirst();
             if (entry.isPresent()) {
@@ -162,21 +163,21 @@ public class IncidentPreprocessor extends BaseComponent {
         return incidentSummary;
     }
 
-    private IncidentSummary syncIdsOrNames(String type, Boolean isIdToNameMap, IncidentSummary incidentSummary,
+    private IncidentSummary syncIdsOrNames(MappingType type, Boolean isIdToNameMap, IncidentSummary incidentSummary,
                                            String key, String val) {
         String newKey = null;
         String newValue = null;
         String oldVal = null;
-        if (isIdToNameMap && type.equals("airports") && incidentSummary.airportId().equals(key)) {  // val is airport name
+        if (isIdToNameMap && type.equals(MappingType.AIRPORTS) && incidentSummary.airportId().equals(key)) {  // val is airport name
             oldVal = incidentSummary.airport();
             newValue = val;
-        } else if (isIdToNameMap && type.equals("species") && incidentSummary.speciesId().equals(key)) {  // val is species name
+        } else if (isIdToNameMap && type.equals(MappingType.SPECIES) && incidentSummary.speciesId().equals(key)) {  // val is species name
             oldVal = incidentSummary.speciesName();
             newValue = val;
-        } else if (!isIdToNameMap && type.equals("airports") && incidentSummary.airport().equals(key)) {  // val is airport id
+        } else if (!isIdToNameMap && type.equals(MappingType.AIRPORTS) && incidentSummary.airport().equals(key)) {  // val is airport id
             oldVal = incidentSummary.airportId();
             newKey = val;
-        } else if (!isIdToNameMap && type.equals("species") && incidentSummary.speciesName().equals(key)) {  // val is species id
+        } else if (!isIdToNameMap && type.equals(MappingType.SPECIES) && incidentSummary.speciesName().equals(key)) {  // val is species id
             oldVal = incidentSummary.speciesId();
             newKey = val;
         }
@@ -188,15 +189,15 @@ public class IncidentPreprocessor extends BaseComponent {
         return incidentSummary;
     }
 
-    private IncidentSummary replaceIncidentValues(String type, IncidentSummary input, String id, String name) {
+    private IncidentSummary replaceIncidentValues(MappingType type, IncidentSummary input, String id, String name) {
         String airportId = input.airportId();
         String airportName = input.airport();
         String speciesId = input.speciesId();
         String speciesName = input.speciesName();
-        if (type.equals("airports")) {
+        if (type.equals(MappingType.AIRPORTS)) {
             airportId = (id != null ? id : airportId);
             airportName = (name != null ? name : airportName);
-        } else if (type.equals("species")) {
+        } else if (type.equals(MappingType.SPECIES)) {
             speciesId = (id != null ? id : speciesId);
             speciesName = (name != null ? name : speciesName);
         }

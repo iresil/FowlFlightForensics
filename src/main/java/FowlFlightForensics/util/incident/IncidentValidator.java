@@ -3,6 +3,7 @@ package FowlFlightForensics.util.incident;
 import FowlFlightForensics.domain.IncidentDetails;
 import FowlFlightForensics.domain.IncidentSummary;
 import FowlFlightForensics.domain.InvalidIncidents;
+import FowlFlightForensics.enums.MappingType;
 import FowlFlightForensics.util.BaseComponent;
 import FowlFlightForensics.util.incident.rules.*;
 import FowlFlightForensics.util.string.CaseTransformer;
@@ -49,7 +50,7 @@ public class IncidentValidator extends BaseComponent {
     public Map<String, String> species = new HashMap<>();
     public List<String> unknownSpeciesIds = new ArrayList<>();
     public List<String> unknownSpeciesNames = new ArrayList<>();
-    public Map<String, Map<String, Set<String>>> multiCodeCorrelations = new HashMap<>();
+    public Map<MappingType, Map<String, Set<String>>> multiCodeCorrelations = new EnumMap<>(MappingType.class);
 
     private InvalidIncidents invalidIncidents = new InvalidIncidents();
 
@@ -57,8 +58,8 @@ public class IncidentValidator extends BaseComponent {
         incidentSummaryList = validateAndGenerateSummary(incidentDetails);
         invalidIncidentsTrimmedMap = invalidIncidents.toTrimmedMap(incidentSummaryList.size());
 
-        airports = validateAndGenerateMap("airports", incidentSummaryList, IncidentSummary::airportId, IncidentSummary::airport);
-        species = validateAndGenerateMap("species", incidentSummaryList, IncidentSummary::speciesId, IncidentSummary::speciesName);
+        airports = validateAndGenerateMap(MappingType.AIRPORTS, incidentSummaryList, IncidentSummary::airportId, IncidentSummary::airport);
+        species = validateAndGenerateMap(MappingType.SPECIES, incidentSummaryList, IncidentSummary::speciesId, IncidentSummary::speciesName);
 
         logger.info("Getting distinct lists of unknown species ids and names ...");
         unknownSpeciesIds = species.keySet().stream().filter(i -> i.contains("UNK")).toList();
@@ -94,7 +95,7 @@ public class IncidentValidator extends BaseComponent {
         }
     }
 
-    private <T> Map<String, String> validateAndGenerateMap(String type, List<T> list, Function<T, String> valueExtractor1, Function<T, String> valueExtractor2) {
+    private <T> Map<String, String> validateAndGenerateMap(MappingType type, List<T> list, Function<T, String> valueExtractor1, Function<T, String> valueExtractor2) {
         logger.info("Comparing id-to-names with name-to-ids {} Maps, to see if other invalid information exists ...", type);
         Map<String, Set<String>> idToNamesMap = extractKeyValuePairs(list, valueExtractor1, valueExtractor2);
         Map<String, Set<String>> nameToIdsMap = extractKeyValuePairs(list, valueExtractor2, valueExtractor1);
