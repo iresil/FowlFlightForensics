@@ -6,7 +6,6 @@ import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.config.TopicConfig;
-import org.apache.kafka.common.serialization.LongSerializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -45,8 +44,8 @@ public class KafkaConfig extends BaseComponent {
 
     @Primary
     @Bean
-    public KafkaTemplate<Long, Object> kafkaTemplate() {
-        var kafkaTemplate = new KafkaTemplate<>(producerFactory(false));
+    public KafkaTemplate<Object, Object> kafkaTemplate() {
+        KafkaTemplate<Object, Object> kafkaTemplate = new KafkaTemplate<>(producerFactory(false));
         //		kafkaTemplate.setProducerListener(new ProducerListener<>() {
         //			@Override
         //			public void onSuccess(ProducerRecord<Long, Object> producerRecord, RecordMetadata recordMetadata) {
@@ -65,7 +64,7 @@ public class KafkaConfig extends BaseComponent {
         return kafkaTemplate;
     }
 
-    private ProducerFactory<Long, Object> producerFactory(final boolean transactional) {
+    private ProducerFactory<Object, Object> producerFactory(final boolean transactional) {
         Map<String, Object> configProperties = getDefaultConfigurationProperties();
         if (transactional) {
             configProperties.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "X1-");
@@ -77,7 +76,7 @@ public class KafkaConfig extends BaseComponent {
     private Map<String, Object> getDefaultConfigurationProperties() {
         Map<String, Object> configProperties = new HashMap<>();
         configProperties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        configProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, LongSerializer.class);
+        configProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
         configProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
         configProperties.put(ProducerConfig.BATCH_SIZE_CONFIG, "16384");
         configProperties.put(ProducerConfig.LINGER_MS_CONFIG, "0");
