@@ -34,6 +34,13 @@ public class KafkaConfig extends BaseComponent {
     @Value("${app.kafka.topics.invalid-quantity}")
     private String invalidQuantityTopic;
 
+    @Value("${app.kafka.topics.config.partitions}")
+    private int partitions;
+    @Value("${app.kafka.topics.config.replicas}")
+    private int replicas;
+    @Value("${app.kafka.topics.config.min-in-sync-replicas}")
+    private Integer minInSyncReplicas;
+
     @Bean
     public AdminClient generateKafkaAdminClient() {
         Map<String, Object> configs = new HashMap<>();
@@ -42,6 +49,26 @@ public class KafkaConfig extends BaseComponent {
         return AdminClient.create(configs);
     }
 
+    // region [Topics]
+    @Bean
+    public KafkaAdmin.NewTopics generateTopics() {
+        return new KafkaAdmin.NewTopics(createKeyfulTopic(rawDataTopic),
+                createKeyfulTopic(groupedDataTopic),
+                createKeyfulTopic(invalidSpeciesTopic),
+                createKeyfulTopic(invalidQuantityTopic));
+    }
+
+    private NewTopic createKeyfulTopic(final String topicName) {
+        return TopicBuilder.name(topicName)
+                .partitions(partitions)
+                .replicas(replicas)
+                //.compact()  // Can't delete from compacted topics
+                .config(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, minInSyncReplicas.toString())
+                .build();
+    }
+    // endregion
+
+    // region [Producer]
     @Primary
     @Bean
     public KafkaTemplate<Object, Object> kafkaTemplate() {
@@ -88,21 +115,5 @@ public class KafkaConfig extends BaseComponent {
 
         return configProperties;
     }
-
-    @Bean
-    public KafkaAdmin.NewTopics generateTopics() {
-        return new KafkaAdmin.NewTopics(createKeyfulTopic(rawDataTopic),
-                createKeyfulTopic(groupedDataTopic),
-                createKeyfulTopic(invalidSpeciesTopic),
-                createKeyfulTopic(invalidQuantityTopic));
-    }
-
-    private NewTopic createKeyfulTopic(final String topicName) {
-        return TopicBuilder.name(topicName)
-                .partitions(2)
-                .replicas(1)
-                //.compact()  // Can't delete from compacted topics
-                .config(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, "1")
-                .build();
-    }
+    // endregion
 }
