@@ -26,7 +26,7 @@ public class ProducerService extends BaseComponent {
     @Value("${app.kafka.topics.raw}")
     private String rawDataTopic;
 
-    private static final Integer NUM_OF_MESSAGES = 100;
+    private static final Integer NUM_OF_MESSAGES = 1000;
 
     private final KafkaTemplate<Object, Object> kafkaTemplate;
     private final IncidentContainer incidentContainer = IncidentContainer.INSTANCE.getInstance();
@@ -37,7 +37,7 @@ public class ProducerService extends BaseComponent {
         incidentSummaryList = incidentContainer.getIncidentSummaryList();
     }
 
-    @Scheduled(cron = "0/2 * * * * ?")
+    @Scheduled(cron = "0/1 * * * * ?")
     public void produceMessages() {
         Iterator<IncidentSummary> iterator = incidentSummaryList.iterator();
         List<IncidentSummary> itemsToSend = new ArrayList<>();
@@ -46,9 +46,13 @@ public class ProducerService extends BaseComponent {
             itemsToSend.add(incident);
             iterator.remove();
         }
+        logger.info("Sending {} messages to {} [remaining: {}] ...", (NUM_OF_MESSAGES < itemsToSend.size() ? NUM_OF_MESSAGES : itemsToSend.size()),
+                rawDataTopic, incidentSummaryList.size());
         LongStream.range(0, NUM_OF_MESSAGES).forEach(i -> {
-            sendMessageWithKeyRecord(rawDataTopic, itemsToSend.get((int)i).getKey(),
-                    itemsToSend.get((int)i));
+            if (i < itemsToSend.size()) {
+                sendMessageWithKeyRecord(rawDataTopic, itemsToSend.get((int) i).getKey(),
+                        itemsToSend.get((int) i));
+            }
         });
     }
 
@@ -57,11 +61,11 @@ public class ProducerService extends BaseComponent {
 
         future.whenComplete((result, ex) -> {
             if (ex == null) {
-                logger.info("{}:{}, delivered to {}@{}.", result.getProducerRecord().key(),
+                logger.trace("{}:{}, delivered to {}@{}.", result.getProducerRecord().key(),
                         result.getProducerRecord().value(), result.getRecordMetadata().partition(),
                         result.getRecordMetadata().offset());
             } else {
-                logger.warn("Unable to deliver message {}:{}.", key, value, ex);
+                logger.error("Unable to deliver message {}:{}.", key, value, ex);
             }
         });
     }
