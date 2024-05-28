@@ -18,12 +18,16 @@ public class CsvParserService extends BaseComponent {
     private CsvReader csvReader;
 
     @Autowired
+    private DataWiperService wiperService;
+
+    @Autowired
     private IncidentPreprocessor incidentPreprocessor;
 
     private final IncidentContainer incidentContainer = IncidentContainer.INSTANCE.getInstance();
 
     @PostConstruct
     public void init() {
+        wiperService.delete();
         List<IncidentDetails> allIncidents = csvReader.zippedCsvToListOfObjects();
         logger.info("Successfully retrieved {} incidents.", allIncidents.size());
         incidentContainer.validateAndTransformIncidents(allIncidents);

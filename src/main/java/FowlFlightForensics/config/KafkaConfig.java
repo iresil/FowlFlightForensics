@@ -1,6 +1,7 @@
 package FowlFlightForensics.config;
 
 import FowlFlightForensics.util.BaseComponent;
+import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -35,11 +36,11 @@ public class KafkaConfig extends BaseComponent {
     private String invalidQuantityTopic;
 
     @Bean
-    public KafkaAdmin generateKafkaAdmin() {
+    public AdminClient generateKafkaAdminClient() {
         Map<String, Object> configs = new HashMap<>();
         configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         configs.put(AdminClientConfig.CLIENT_ID_CONFIG, "local-admin-1");
-        return new KafkaAdmin(configs);
+        return AdminClient.create(configs);
     }
 
     @Primary
@@ -65,7 +66,7 @@ public class KafkaConfig extends BaseComponent {
     }
 
     private ProducerFactory<Long, Object> producerFactory(final boolean transactional) {
-        var configProperties = getDefaultConfigurationProperties();
+        Map<String, Object> configProperties = getDefaultConfigurationProperties();
         if (transactional) {
             configProperties.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "X1-");
             configProperties.put(ProducerConfig.TRANSACTION_TIMEOUT_CONFIG, 60000);
@@ -101,15 +102,7 @@ public class KafkaConfig extends BaseComponent {
         return TopicBuilder.name(topicName)
                 .partitions(2)
                 .replicas(1)
-                .compact()
-                .config(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, "1")
-                .build();
-    }
-
-    private NewTopic createKeylessTopic(final String topicName) {
-        return TopicBuilder.name(topicName)
-                .partitions(2)
-                .replicas(1)
+                //.compact()  // Can't delete from compacted topics
                 .config(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, "1")
                 .build();
     }
