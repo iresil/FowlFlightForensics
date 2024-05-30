@@ -20,10 +20,10 @@ public class StreamService extends BaseComponent {
 
     @Bean
     public KStream<IncidentKey, IncidentSummary> streamFilter(StreamsBuilder builder) {
-        var keySerde = new JsonKeySerde();
-        var incidentSerde = new JsonValueSerde();
+        JsonKeySerde keySerde = new JsonKeySerde();
+        JsonValueSerde incidentSerde = new JsonValueSerde();
 
-        var invalidSpeciesStream = builder.stream(rawDataTopic, Consumed.with(keySerde, incidentSerde))
+        KStream<IncidentKey, IncidentSummary> invalidSpeciesStream = builder.stream(rawDataTopic, Consumed.with(keySerde, incidentSerde))
                 .filter((k, v) -> k.speciesName().isEmpty());
 
         invalidSpeciesStream.to(invalidSpeciesTopic);

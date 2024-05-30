@@ -130,7 +130,7 @@ public class KafkaConfig extends BaseComponent {
     // region [Streams]
     @Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
     public KafkaStreamsConfiguration kafkaStreamsConfig() {
-        var props = new HashMap<String, Object>();
+        HashMap<String, Object> props = new HashMap<>();
 
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, "kafka-stream");
         props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
