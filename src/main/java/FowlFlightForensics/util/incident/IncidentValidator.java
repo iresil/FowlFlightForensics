@@ -58,8 +58,8 @@ public class IncidentValidator extends BaseComponent {
         incidentSummaryList = validateAndGenerateSummary(incidentDetails);
         invalidIncidentsTrimmedMap = invalidIncidents.toTrimmedMap(incidentSummaryList.size());
 
-        airports = validateAndGenerateMap(MappingType.AIRPORTS, incidentSummaryList, IncidentSummary::airportId, IncidentSummary::airport);
-        species = validateAndGenerateMap(MappingType.SPECIES, incidentSummaryList, IncidentSummary::speciesId, IncidentSummary::speciesName);
+        airports = validateAndGenerateMap(MappingType.AIRPORTS, incidentSummaryList, IncidentSummary::getAirportId, IncidentSummary::getAirportName);
+        species = validateAndGenerateMap(MappingType.SPECIES, incidentSummaryList, IncidentSummary::getSpeciesId, IncidentSummary::getSpeciesName);
 
         logger.info("Getting distinct lists of unknown species ids and names ...");
         unknownSpeciesIds = species.keySet().stream().filter(i -> i.contains("UNK")).toList();

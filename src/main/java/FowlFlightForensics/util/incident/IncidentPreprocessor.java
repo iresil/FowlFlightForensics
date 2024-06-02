@@ -138,16 +138,16 @@ public class IncidentPreprocessor extends BaseComponent {
         String newKey = null;
         String newValue = null;
         if (isIdToNameMap
-                && ((type.equals(MappingType.AIRPORTS) && incidentSummary.airport().equals(val))
-                    || type.equals(MappingType.SPECIES) && incidentSummary.speciesName().equals(val))) {  // val is id, treated as a name
+                && ((type.equals(MappingType.AIRPORTS) && incidentSummary.getAirportName().equals(val))
+                    || type.equals(MappingType.SPECIES) && incidentSummary.getSpeciesName().equals(val))) {  // val is id, treated as a name
             String entry = mapping.get(val);  // Find the actual name to replace val
             if (entry != null) {
                 newKey = val;
                 newValue = entry;
             }
         } else if (!isIdToNameMap
-                && ((type.equals(MappingType.AIRPORTS) && incidentSummary.airportId().equals(val))
-                    || (type.equals(MappingType.SPECIES) && incidentSummary.speciesId().equals(val)))) {  // val is name, treated as an id
+                && ((type.equals(MappingType.AIRPORTS) && incidentSummary.getAirportId().equals(val))
+                    || (type.equals(MappingType.SPECIES) && incidentSummary.getSpeciesId().equals(val)))) {  // val is name, treated as an id
             // Look up val as name, and retrieve the entry, if present
             Optional<Entry<String, String>> entry = mapping.entrySet().stream().filter(item -> item.getValue().equals(val)).findFirst();
             if (entry.isPresent()) {
@@ -168,17 +168,17 @@ public class IncidentPreprocessor extends BaseComponent {
         String newKey = null;
         String newValue = null;
         String oldVal = null;
-        if (isIdToNameMap && type.equals(MappingType.AIRPORTS) && incidentSummary.airportId().equals(key)) {  // val is airport name
-            oldVal = incidentSummary.airport();
+        if (isIdToNameMap && type.equals(MappingType.AIRPORTS) && incidentSummary.getAirportId().equals(key)) {  // val is airport name
+            oldVal = incidentSummary.getAirportName();
             newValue = val;
-        } else if (isIdToNameMap && type.equals(MappingType.SPECIES) && incidentSummary.speciesId().equals(key)) {  // val is species name
-            oldVal = incidentSummary.speciesName();
+        } else if (isIdToNameMap && type.equals(MappingType.SPECIES) && incidentSummary.getSpeciesId().equals(key)) {  // val is species name
+            oldVal = incidentSummary.getSpeciesName();
             newValue = val;
-        } else if (!isIdToNameMap && type.equals(MappingType.AIRPORTS) && incidentSummary.airport().equals(key)) {  // val is airport id
-            oldVal = incidentSummary.airportId();
+        } else if (!isIdToNameMap && type.equals(MappingType.AIRPORTS) && incidentSummary.getAirportName().equals(key)) {  // val is airport id
+            oldVal = incidentSummary.getAirportId();
             newKey = val;
-        } else if (!isIdToNameMap && type.equals(MappingType.SPECIES) && incidentSummary.speciesName().equals(key)) {  // val is species id
-            oldVal = incidentSummary.speciesId();
+        } else if (!isIdToNameMap && type.equals(MappingType.SPECIES) && incidentSummary.getSpeciesName().equals(key)) {  // val is species id
+            oldVal = incidentSummary.getSpeciesId();
             newKey = val;
         }
         if ((newKey != null || newValue != null) && !oldVal.equals(val)) {
@@ -190,10 +190,10 @@ public class IncidentPreprocessor extends BaseComponent {
     }
 
     private IncidentSummary replaceIncidentValues(MappingType type, IncidentSummary input, String id, String name) {
-        String airportId = input.airportId();
-        String airportName = input.airport();
-        String speciesId = input.speciesId();
-        String speciesName = input.speciesName();
+        String airportId = input.getAirportId();
+        String airportName = input.getAirportName();
+        String speciesId = input.getSpeciesId();
+        String speciesName = input.getSpeciesName();
         if (type.equals(MappingType.AIRPORTS)) {
             airportId = (id != null ? id : airportId);
             airportName = (name != null ? name : airportName);
@@ -201,11 +201,11 @@ public class IncidentPreprocessor extends BaseComponent {
             speciesId = (id != null ? id : speciesId);
             speciesName = (name != null ? name : speciesName);
         }
-        return new IncidentSummary(input.recordId(), input.incidentYear(),
-                input.incidentMonth(), input.incidentDay(), input.aircraft(),
-                input.aircraftMass(), input.engines(), airportId, airportName,
-                input.state(), input.faaRegion(), input.warningIssued(), input.flightPhase(),
-                speciesId, speciesName, input.speciesQuantityMin(), input.speciesQuantityMax(),
-                input.fatalities(), input.injuries(), input.aircraftDamage());
+        return new IncidentSummary(input.getRecordId(), input.getYear(),
+                input.getMonth(), input.getDay(), input.getAircraft(),
+                input.getAircraftMass(), input.getEngines(), airportId, airportName,
+                input.getState(), input.getFaaRegion(), input.getWarningIssued(), input.getFlightPhase(),
+                speciesId, speciesName, input.getSpeciesQuantityMin(), input.getSpeciesQuantityMax(),
+                input.getFatalities(), input.getInjuries(), input.getAircraftDamage());
     }
 }

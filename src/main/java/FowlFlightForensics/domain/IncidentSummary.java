@@ -1,11 +1,33 @@
 package FowlFlightForensics.domain;
 
-public record IncidentSummary(Integer recordId, Integer incidentYear, Integer incidentMonth, Integer incidentDay,
-                              String aircraft, Float aircraftMass, Integer engines, String airportId, String airport,
-                              String state, String faaRegion, Boolean warningIssued, String flightPhase,
-                              String speciesId, String speciesName, Integer speciesQuantityMin,
-                              Integer speciesQuantityMax, Integer fatalities, Integer injuries, Boolean aircraftDamage) {
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
+@AllArgsConstructor
+@Getter
+public class IncidentSummary {
+    public Integer recordId;
+    public Integer year;
+    public Integer month;
+    public Integer day;
+    public String aircraft;
+    public Float aircraftMass;
+    public Integer engines;
+    public String airportId;
+    public String airportName;
+    public String state;
+    public String faaRegion;
+    public Boolean warningIssued;
+    public String flightPhase;
+    public String speciesId;
+    public String speciesName;
+    public Integer speciesQuantityMin;
+    public Integer speciesQuantityMax;
+    public Integer fatalities;
+    public Integer injuries;
+    public Boolean aircraftDamage;
+
     public IncidentKey getKey() {
-        return new IncidentKey(incidentYear, incidentMonth, speciesId, speciesName, aircraftDamage);
+        return new IncidentKey(year, month, speciesId, speciesName, aircraftDamage);
     }
 }
