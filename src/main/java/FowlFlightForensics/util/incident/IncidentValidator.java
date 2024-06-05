@@ -3,6 +3,7 @@ package FowlFlightForensics.util.incident;
 import FowlFlightForensics.domain.IncidentDetails;
 import FowlFlightForensics.domain.IncidentSummary;
 import FowlFlightForensics.domain.InvalidIncidents;
+import FowlFlightForensics.enums.InvalidIncidentTopic;
 import FowlFlightForensics.enums.MappingType;
 import FowlFlightForensics.util.BaseComponent;
 import FowlFlightForensics.util.incident.rules.*;
@@ -66,6 +67,26 @@ public class IncidentValidator extends BaseComponent {
         unknownSpeciesNames = species.values().stream().filter(i -> i.contains("UNKNOWN")).toList();
     }
 
+    public Set<InvalidIncidentTopic> validateIncidentSummary(IncidentSummary summary) {
+        logger.trace("Applying summary validation rules ...");
+
+        Map<String, List<ValidationRule<Object>>> summaryRules = validationRules;
+        validationRules.remove("SpeciesQuantity");
+        validationRules.put("SpeciesQuantityMin", List.of(new NotNullValidationRule()));
+        validationRules.put("SpeciesQuantityMax", List.of(new NotNullValidationRule()));
+
+        Map<String, IncidentSummary> resultMap = new HashMap<>();
+        for (String ruleName : validationRules.keySet().stream().toList()) {
+            for (ValidationRule<Object> vr : validationRules.get(ruleName)) {
+                Object fieldVal = summary.getFieldValueByName(CaseTransformer.toLowerFirstChar(ruleName));
+                if (fieldVal != null) {
+                    validateAndPutField(fieldVal, vr, resultMap, ruleName, summary, Map::put);
+                }
+            }
+        }
+        return resultMap.keySet().stream().map(InvalidIncidentTopic::fromString).collect(toSet());
+    }
+
     // region [Object Validators]
     private List<IncidentSummary> validateAndGenerateSummary(List<IncidentDetails> incidentDetails) {
         List<IncidentSummary> incidentSummaryList = new ArrayList<>();
@@ -87,7 +108,7 @@ public class IncidentValidator extends BaseComponent {
         logger.trace("Applying validation rules ...");
         for (String ruleName : validationRules.keySet().stream().toList()) {
             for (ValidationRule<Object> vr : validationRules.get(ruleName)) {
-                validateField(incident.getFieldValueByName(CaseTransformer.toLowerFirstChar(ruleName)),
+                validateAndAddField(incident.getFieldValueByName(CaseTransformer.toLowerFirstChar(ruleName)),
                         vr,
                         invalidIncidents.getFieldValueByName("invalid" + ruleName),
                         summary, List::add);
@@ -143,17 +164,29 @@ public class IncidentValidator extends BaseComponent {
         void add(T target, R value);
     }
 
-    private <T, R> void validateField(Object value, ValidationRule<Object> rule, T obj, R summary,
-                                      AddingFunction<T, R> func) {
+    @FunctionalInterface
+    interface PuttingFunction<T, K, V> {
+        void put(T target, K key, V value);
+    }
+
+    private <T, R> void validateAndAddField(Object value, ValidationRule<Object> rule, T obj, R summary,
+                                            AddingFunction<T, R> func) {
         if (rule != null && !rule.isValid(value)) {
             func.add(obj, summary);
+        }
+    }
+
+    private <T, K, V> void validateAndPutField(Object value, ValidationRule<Object> rule, T obj, K key, V summary,
+                                               PuttingFunction<T, K, V> func) {
+        if (rule != null && !rule.isValid(value)) {
+            func.put(obj, key, summary);
         }
     }
     // endregion
 
     // region [Util]
     private <T, K, V> Map<K, Set<V>> extractKeyValuePairs(List<T> list, Function<T, K> keyExtractor,
-                                                               Function<T, V> valueExtractor) {
+                                                          Function<T, V> valueExtractor) {
         return list.stream()
                 .collect(groupingBy(keyExtractor, mapping(valueExtractor, toSet())));
     }

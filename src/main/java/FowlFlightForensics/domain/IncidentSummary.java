@@ -1,11 +1,16 @@
 package FowlFlightForensics.domain;
 
+import FowlFlightForensics.util.BaseComponent;
+import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.lang.reflect.Field;
+
+@NoArgsConstructor
 @AllArgsConstructor
 @Getter
-public class IncidentSummary {
+public class IncidentSummary extends BaseComponent {
     public Integer recordId;
     public Integer year;
     public Integer month;
@@ -29,5 +34,17 @@ public class IncidentSummary {
 
     public IncidentKey getKey() {
         return new IncidentKey(year, month, speciesId, speciesName, aircraftDamage);
+    }
+
+    public Object getFieldValueByName(String fieldName) {
+        Object result = null;
+        try {
+            Field f = getClass().getDeclaredField(fieldName);
+            f.setAccessible(true);
+            result = f.get(this);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            logger.error("Error attempting to retrieve field value by name: {}", fieldName, e);
+        }
+        return result;
     }
 }

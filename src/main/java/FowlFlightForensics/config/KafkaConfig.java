@@ -45,6 +45,8 @@ public class KafkaConfig extends BaseComponent {
     private String invalidSpeciesTopic;
     @Value("${app.kafka.topics.invalid-quantity}")
     private String invalidQuantityTopic;
+    @Value("${app.kafka.topics.invalid-generic}")
+    private String invalidGenericTopic;
 
     @Value("${app.kafka.topics.config.partitions}")
     private int partitions;
@@ -69,7 +71,8 @@ public class KafkaConfig extends BaseComponent {
         return new KafkaAdmin.NewTopics(createKeyfulTopic(rawDataTopic),
                 createKeyfulTopic(groupedDataTopic),
                 createKeyfulTopic(invalidSpeciesTopic),
-                createKeyfulTopic(invalidQuantityTopic));
+                createKeyfulTopic(invalidQuantityTopic),
+                createKeyfulTopic(invalidGenericTopic));
     }
 
     private NewTopic createKeyfulTopic(final String topicName) {

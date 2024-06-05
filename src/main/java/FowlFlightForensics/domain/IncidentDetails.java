@@ -212,7 +212,7 @@ public class IncidentDetails extends BaseComponent {
     private Boolean otherDamage;
 
     public Object getFieldValueByName(String fieldName) {
-        Object result = new ArrayList<>();
+        Object result = new Object();
         try {
             Field f = getClass().getDeclaredField(fieldName);
             f.setAccessible(true);

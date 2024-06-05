@@ -1,7 +1,9 @@
 package FowlFlightForensics.service;
 
+import FowlFlightForensics.domain.IncidentContainer;
 import FowlFlightForensics.domain.IncidentKey;
 import FowlFlightForensics.domain.IncidentSummary;
+import FowlFlightForensics.enums.InvalidIncidentTopic;
 import FowlFlightForensics.util.BaseComponent;
 import FowlFlightForensics.util.serdes.JsonKeySerde;
 import FowlFlightForensics.util.serdes.JsonValueSerde;
@@ -18,13 +20,15 @@ public class StreamService extends BaseComponent {
     @Value("${app.kafka.topics.invalid-species}")
     private String invalidSpeciesTopic;
 
+    private final IncidentContainer incidentContainer = IncidentContainer.INSTANCE.getInstance();
+
     @Bean
     public KStream<IncidentKey, IncidentSummary> streamFilter(StreamsBuilder builder) {
         JsonKeySerde keySerde = new JsonKeySerde();
         JsonValueSerde incidentSerde = new JsonValueSerde();
 
         KStream<IncidentKey, IncidentSummary> invalidSpeciesStream = builder.stream(rawDataTopic, Consumed.with(keySerde, incidentSerde))
-                .filter((k, v) -> k.speciesName().isEmpty());
+                .filter((k, v) -> incidentContainer.validateIncidentSummary(v).contains(InvalidIncidentTopic.SPECIES));
 
         invalidSpeciesStream.to(invalidSpeciesTopic);
         invalidSpeciesStream.print(Printed.toSysOut());

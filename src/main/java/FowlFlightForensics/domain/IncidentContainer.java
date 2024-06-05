@@ -1,5 +1,6 @@
 package FowlFlightForensics.domain;
 
+import FowlFlightForensics.enums.InvalidIncidentTopic;
 import FowlFlightForensics.enums.MappingType;
 import FowlFlightForensics.util.incident.IncidentValidator;
 
@@ -22,6 +23,10 @@ public enum IncidentContainer {
 
     public void validateAndTransformIncidents(List<IncidentDetails> incidentDetails) {
         incidentValidator.validateAndTransformIncidents(incidentDetails);
+    }
+
+    public Set<InvalidIncidentTopic> validateIncidentSummary(IncidentSummary summary) {
+        return incidentValidator.validateIncidentSummary(summary);
     }
 
     public List<IncidentSummary> getIncidentSummaryList() {
