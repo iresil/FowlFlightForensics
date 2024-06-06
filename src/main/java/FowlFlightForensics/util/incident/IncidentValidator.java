@@ -78,9 +78,7 @@ public class IncidentValidator extends BaseComponent {
         for (String ruleName : summaryValidationRules.keySet().stream().toList()) {
             for (ValidationRule<Object> vr : summaryValidationRules.get(ruleName)) {
                 Object fieldVal = summary.getFieldValueByName(CaseTransformer.toLowerFirstChar(ruleName));
-                if (fieldVal != null) {
-                    validateAndPutField(fieldVal, vr, resultMap, ruleName, summary, Map::put);
-                }
+                validateAndPutField(fieldVal, vr, resultMap, ruleName, summary, Map::put);
             }
         }
         return resultMap.keySet().stream().map(InvalidIncidentTopic::fromString).collect(toSet());
