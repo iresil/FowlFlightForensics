@@ -25,21 +25,44 @@ public class StreamService extends BaseComponent {
         JsonKeySerde keySerde = new JsonKeySerde();
         JsonValueSerde incidentSerde = new JsonValueSerde();
 
-        KStream<IncidentKey, IncidentSummary> invalidSpeciesStream = builder.stream(rawDataTopic, Consumed.with(keySerde, incidentSerde))
-                .filter((k, v) -> incidentContainer.validateIncidentSummary(v).contains(InvalidIncidentTopic.SPECIES));
-        invalidSpeciesStream.to(InvalidIncidentTopic.SPECIES.getAnnotationValue());
-        //invalidSpeciesStream.print(Printed.toSysOut());
+        KStream<IncidentKey, IncidentSummary> invalidStream = builder.stream(rawDataTopic, Consumed.with(keySerde, incidentSerde));
+        invalidStream.split()
+                .branch((k, v) -> incidentContainer.validateIncidentSummary(v).size() == 3,
+                        Branched.withConsumer(kstream -> {
+                            kstream.to(InvalidIncidentTopic.SPECIES.getAnnotationValue());
+                            kstream.to(InvalidIncidentTopic.QUANTITY.getAnnotationValue());
+                            kstream.to(InvalidIncidentTopic.OTHER.getAnnotationValue());
+                        }))
+                .branch((k, v) -> incidentContainer.validateIncidentSummary(v).contains(InvalidIncidentTopic.SPECIES)
+                        && incidentContainer.validateIncidentSummary(v).contains(InvalidIncidentTopic.QUANTITY),
+                        Branched.withConsumer(kstream -> {
+                            kstream.to(InvalidIncidentTopic.SPECIES.getAnnotationValue());
+                            kstream.to(InvalidIncidentTopic.QUANTITY.getAnnotationValue());
+                        }))
+                .branch((k, v) -> incidentContainer.validateIncidentSummary(v).contains(InvalidIncidentTopic.SPECIES)
+                                && incidentContainer.validateIncidentSummary(v).contains(InvalidIncidentTopic.OTHER),
+                        Branched.withConsumer(kstream -> {
+                            kstream.to(InvalidIncidentTopic.SPECIES.getAnnotationValue());
+                            kstream.to(InvalidIncidentTopic.OTHER.getAnnotationValue());
+                        }))
+                .branch((k, v) -> incidentContainer.validateIncidentSummary(v).contains(InvalidIncidentTopic.QUANTITY)
+                                && incidentContainer.validateIncidentSummary(v).contains(InvalidIncidentTopic.OTHER),
+                        Branched.withConsumer(kstream -> {
+                            kstream.to(InvalidIncidentTopic.QUANTITY.getAnnotationValue());
+                            kstream.to(InvalidIncidentTopic.OTHER.getAnnotationValue());
+                        }))
+                .branch((k, v) -> incidentContainer.validateIncidentSummary(v).contains(InvalidIncidentTopic.SPECIES),
+                        Branched.withConsumer(kstream -> kstream.to(InvalidIncidentTopic.SPECIES.getAnnotationValue())))
+                .branch((k, v) -> incidentContainer.validateIncidentSummary(v).contains(InvalidIncidentTopic.QUANTITY),
+                        Branched.withConsumer(kstream -> kstream.to(InvalidIncidentTopic.QUANTITY.getAnnotationValue())))
+                .branch((k, v) -> incidentContainer.validateIncidentSummary(v).contains(InvalidIncidentTopic.OTHER),
+                        Branched.withConsumer(kstream -> kstream.to(InvalidIncidentTopic.OTHER.getAnnotationValue())))
+                .noDefaultBranch();
 
-        KStream<IncidentKey, IncidentSummary> invalidQuantityStream = builder.stream(rawDataTopic, Consumed.with(keySerde, incidentSerde))
-                .filter((k, v) -> incidentContainer.validateIncidentSummary(v).contains(InvalidIncidentTopic.QUANTITY));
-        invalidQuantityStream.to(InvalidIncidentTopic.QUANTITY.getAnnotationValue());
-        //invalidQuantityStream.print(Printed.toSysOut());
+        //KStream<IncidentKey, IncidentSummary> speciesInvalidOut = invalidStream
+        //        .filter((k, v) -> incidentContainer.validateIncidentSummary(v).contains(InvalidIncidentTopic.SPECIES));
+        //speciesInvalidOut.print(Printed.toSysOut());
 
-        KStream<IncidentKey, IncidentSummary> invalidGenericStream = builder.stream(rawDataTopic, Consumed.with(keySerde, incidentSerde))
-                .filter((k, v) -> incidentContainer.validateIncidentSummary(v).contains(InvalidIncidentTopic.OTHER));
-        invalidGenericStream.to(InvalidIncidentTopic.OTHER.getAnnotationValue());
-        //invalidGenericStream.print(Printed.toSysOut());
-
-        return invalidSpeciesStream;
+        return invalidStream;
     }
 }
