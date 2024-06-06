@@ -20,27 +20,29 @@ public class DataWiperService extends BaseComponent {
         Map<TopicPartition, RecordsToDelete> deleteMap = new HashMap<>();
         try {
             adminClient.listTopics().names().get().forEach(topic -> {
-                int partitionCount = 0;
-                try {
-                    partitionCount = adminClient.describeTopics(Collections.singleton(topic)).topicNameValues().get(topic).get().partitions().size();
-                } catch (InterruptedException | ExecutionException e) {
-                    logger.error("Couldn't retrieve partition count for topic {}", topic, e);
-                }
-
-                for (int partitionIndex = 0; partitionIndex < partitionCount; partitionIndex++) {
-                    TopicPartition partition = new TopicPartition(topic, partitionIndex);
-                    OffsetSpec latestOffsetSpec = OffsetSpec.latest();
-
-                    Map<TopicPartition, ListOffsetsResult.ListOffsetsResultInfo> offsets = new HashMap<>();
+                if (!topic.contains("STATE-STORE")) {
+                    int partitionCount = 0;
                     try {
-                        offsets = adminClient.listOffsets(Map.of(partition, latestOffsetSpec)).all().get();
+                        partitionCount = adminClient.describeTopics(Collections.singleton(topic)).topicNameValues().get(topic).get().partitions().size();
                     } catch (InterruptedException | ExecutionException e) {
-                        logger.error("Couldn't retrieve offsets for topic {}, partition {}", topic, partition.toString(), e);
+                        logger.error("Couldn't retrieve partition count for topic {}", topic, e);
                     }
 
-                    for (Map.Entry<TopicPartition, ListOffsetsResult.ListOffsetsResultInfo> entry : offsets.entrySet()) {
-                        long lowWatermark = offsets.get(entry.getKey()).offset();
-                        deleteMap.put(new TopicPartition(topic, partitionIndex), RecordsToDelete.beforeOffset(lowWatermark));
+                    for (int partitionIndex = 0; partitionIndex < partitionCount; partitionIndex++) {
+                        TopicPartition partition = new TopicPartition(topic, partitionIndex);
+                        OffsetSpec latestOffsetSpec = OffsetSpec.latest();
+
+                        Map<TopicPartition, ListOffsetsResult.ListOffsetsResultInfo> offsets = new HashMap<>();
+                        try {
+                            offsets = adminClient.listOffsets(Map.of(partition, latestOffsetSpec)).all().get();
+                        } catch (InterruptedException | ExecutionException e) {
+                            logger.error("Couldn't retrieve offsets for topic {}, partition {}", topic, partition.toString(), e);
+                        }
+
+                        for (Map.Entry<TopicPartition, ListOffsetsResult.ListOffsetsResultInfo> entry : offsets.entrySet()) {
+                            long lowWatermark = offsets.get(entry.getKey()).offset();
+                            deleteMap.put(new TopicPartition(topic, partitionIndex), RecordsToDelete.beforeOffset(lowWatermark));
+                        }
                     }
                 }
             });
