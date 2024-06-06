@@ -17,8 +17,6 @@ import org.springframework.context.annotation.Configuration;
 public class StreamService extends BaseComponent {
     @Value("${app.kafka.topics.raw}")
     private String rawDataTopic;
-    @Value("${app.kafka.topics.invalid-species}")
-    private String invalidSpeciesTopic;
 
     private final IncidentContainer incidentContainer = IncidentContainer.INSTANCE.getInstance();
 
@@ -29,9 +27,18 @@ public class StreamService extends BaseComponent {
 
         KStream<IncidentKey, IncidentSummary> invalidSpeciesStream = builder.stream(rawDataTopic, Consumed.with(keySerde, incidentSerde))
                 .filter((k, v) -> incidentContainer.validateIncidentSummary(v).contains(InvalidIncidentTopic.SPECIES));
+        invalidSpeciesStream.to(InvalidIncidentTopic.SPECIES.getAnnotationValue());
+        //invalidSpeciesStream.print(Printed.toSysOut());
 
-        invalidSpeciesStream.to(invalidSpeciesTopic);
-        invalidSpeciesStream.print(Printed.toSysOut());
+        KStream<IncidentKey, IncidentSummary> invalidQuantityStream = builder.stream(rawDataTopic, Consumed.with(keySerde, incidentSerde))
+                .filter((k, v) -> incidentContainer.validateIncidentSummary(v).contains(InvalidIncidentTopic.QUANTITY));
+        invalidQuantityStream.to(InvalidIncidentTopic.QUANTITY.getAnnotationValue());
+        //invalidQuantityStream.print(Printed.toSysOut());
+
+        KStream<IncidentKey, IncidentSummary> invalidGenericStream = builder.stream(rawDataTopic, Consumed.with(keySerde, incidentSerde))
+                .filter((k, v) -> incidentContainer.validateIncidentSummary(v).contains(InvalidIncidentTopic.OTHER));
+        invalidGenericStream.to(InvalidIncidentTopic.OTHER.getAnnotationValue());
+        //invalidGenericStream.print(Printed.toSysOut());
 
         return invalidSpeciesStream;
     }
