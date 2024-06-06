@@ -44,6 +44,10 @@ public class IncidentValidator extends BaseComponent {
         { "Fatalities", List.of(new NotNullValidationRule()) },
         { "Injuries", List.of(new NotNullValidationRule()) }
     }).collect(toMap(data -> (String) data[0], data -> (List<ValidationRule<Object>>) data[1]));
+    @SuppressWarnings("unchecked") private Map<String, List<ValidationRule<Object>>> summaryValidationRules = Stream.of(new Object[][] {
+        { "SpeciesQuantityMin", List.of(new NotNullValidationRule()) },
+        { "SpeciesQuantityMax", List.of(new NotNullValidationRule()) },
+    }).collect(toMap(data -> (String) data[0], data -> (List<ValidationRule<Object>>) data[1]));
 
     public List<IncidentSummary> incidentSummaryList = new ArrayList<>();
     public Map<String, Set<IncidentSummary>> invalidIncidentsTrimmedMap = new HashMap<>();
@@ -58,6 +62,7 @@ public class IncidentValidator extends BaseComponent {
     public void validateAndTransformIncidents(List<IncidentDetails> incidentDetails) {
         incidentSummaryList = validateAndGenerateSummary(incidentDetails);
         invalidIncidentsTrimmedMap = invalidIncidents.toTrimmedMap(incidentSummaryList.size());
+        summaryValidationRules = generateSummaryValidationRules(validationRules, invalidIncidentsTrimmedMap);
 
         airports = validateAndGenerateMap(MappingType.AIRPORTS, incidentSummaryList, IncidentSummary::getAirportId, IncidentSummary::getAirportName);
         species = validateAndGenerateMap(MappingType.SPECIES, incidentSummaryList, IncidentSummary::getSpeciesId, IncidentSummary::getSpeciesName);
@@ -69,15 +74,9 @@ public class IncidentValidator extends BaseComponent {
 
     public Set<InvalidIncidentTopic> validateIncidentSummary(IncidentSummary summary) {
         logger.trace("Applying summary validation rules ...");
-
-        Map<String, List<ValidationRule<Object>>> summaryRules = validationRules;
-        validationRules.remove("SpeciesQuantity");
-        validationRules.put("SpeciesQuantityMin", List.of(new NotNullValidationRule()));
-        validationRules.put("SpeciesQuantityMax", List.of(new NotNullValidationRule()));
-
         Map<String, IncidentSummary> resultMap = new HashMap<>();
-        for (String ruleName : validationRules.keySet().stream().toList()) {
-            for (ValidationRule<Object> vr : validationRules.get(ruleName)) {
+        for (String ruleName : summaryValidationRules.keySet().stream().toList()) {
+            for (ValidationRule<Object> vr : summaryValidationRules.get(ruleName)) {
                 Object fieldVal = summary.getFieldValueByName(CaseTransformer.toLowerFirstChar(ruleName));
                 if (fieldVal != null) {
                     validateAndPutField(fieldVal, vr, resultMap, ruleName, summary, Map::put);
@@ -155,6 +154,21 @@ public class IncidentValidator extends BaseComponent {
                 incident.getState(), incident.getFaaRegion(), incident.getWarningIssued(), incident.getFlightPhase(),
                 incident.getSpeciesId(), incident.getSpeciesName(), qtyRange.getKey(), qtyRange.getValue(),
                 incident.getFatalities(), incident.getInjuries(), incident.getAircraftDamage());
+    }
+
+    private Map<String, List<ValidationRule<Object>>> generateSummaryValidationRules(Map<String, List<ValidationRule<Object>>> validationRules,
+                                                                                     Map<String, Set<IncidentSummary>> invalidIncidentsTrimmedMap) {
+        Map<String, List<ValidationRule<Object>>> result = summaryValidationRules;
+        if (!invalidIncidentsTrimmedMap.containsKey("invalidSpeciesQuantity")) {
+            result.remove("SpeciesQuantityMin");
+            result.remove("SpeciesQuantityMax");
+        }
+        for (String ruleName : validationRules.keySet().stream().toList()) {
+            if (invalidIncidentsTrimmedMap.containsKey("invalid" + ruleName) && !ruleName.toLowerCase().contains("quantity")) {
+                result.put(ruleName, validationRules.get(ruleName));
+            }
+        }
+        return result;
     }
     // endregion
 
