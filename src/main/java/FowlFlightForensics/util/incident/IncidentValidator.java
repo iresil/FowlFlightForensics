@@ -26,9 +26,9 @@ import static java.util.stream.Collectors.*;
 @Setter
 public class IncidentValidator extends BaseComponent {
     @SuppressWarnings("unchecked") private final Map<String, List<ValidationRule<Object>>> validationRules = Stream.of(new Object[][] {
-        { "Year", List.of(new RangeValidationRule(1990, 2015)) },
-        { "Month", List.of(new RangeValidationRule(1, 12)) },
-        { "Day", List.of(new RangeValidationRule(1, 31)) },
+        { "Year", List.of(new NotNullValidationRule(), new RangeValidationRule(1990, 2015)) },
+        { "Month", List.of(new NotNullValidationRule(), new RangeValidationRule(1, 12)) },
+        { "Day", List.of(new NotNullValidationRule(), new RangeValidationRule(1, 31)) },
         { "Aircraft", List.of(new ValueValidationRule("UNKNOWN")) },
         { "AircraftMass", List.of(new NotNullValidationRule()) },
         { "Engines", List.of(new NotNullValidationRule()) },
