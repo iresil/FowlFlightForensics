@@ -7,6 +7,7 @@ import FowlFlightForensics.enums.InvalidIncidentTopic;
 import FowlFlightForensics.util.BaseComponent;
 import FowlFlightForensics.util.serdes.JsonKeySerde;
 import FowlFlightForensics.util.serdes.JsonValueSerde;
+import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.kstream.*;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,6 +18,8 @@ import org.springframework.context.annotation.Configuration;
 public class StreamService extends BaseComponent {
     @Value("${app.kafka.topics.raw}")
     private String rawDataTopic;
+    @Value("${app.kafka.topics.grouped}")
+    private String groupedDataTopic;
 
     private final IncidentContainer incidentContainer = IncidentContainer.INSTANCE.getInstance();
 
@@ -25,8 +28,8 @@ public class StreamService extends BaseComponent {
         JsonKeySerde keySerde = new JsonKeySerde();
         JsonValueSerde incidentSerde = new JsonValueSerde();
 
-        KStream<IncidentKey, IncidentSummary> invalidStream = builder.stream(rawDataTopic, Consumed.with(keySerde, incidentSerde));
-        invalidStream.split()
+        KStream<IncidentKey, IncidentSummary> rawIncidentStream = builder.stream(rawDataTopic, Consumed.with(keySerde, incidentSerde));
+        rawIncidentStream.split()
                 .branch((k, v) -> incidentContainer.validateIncidentSummary(v).size() == 3,
                         Branched.withConsumer(kstream -> {
                             kstream.to(InvalidIncidentTopic.SPECIES.getAnnotationValue());
@@ -57,12 +60,17 @@ public class StreamService extends BaseComponent {
                         Branched.withConsumer(kstream -> kstream.to(InvalidIncidentTopic.QUANTITY.getAnnotationValue())))
                 .branch((k, v) -> incidentContainer.validateIncidentSummary(v).contains(InvalidIncidentTopic.OTHER),
                         Branched.withConsumer(kstream -> kstream.to(InvalidIncidentTopic.OTHER.getAnnotationValue())))
-                .noDefaultBranch();
+                .defaultBranch(Branched.withConsumer(kstream -> {
+                    kstream.groupBy((k, v) -> k, Grouped.with(keySerde, incidentSerde))
+                            .count()
+                            .toStream()
+                            .to(groupedDataTopic);
+                }));
 
-        //KStream<IncidentKey, IncidentSummary> speciesInvalidOut = invalidStream
-        //        .filter((k, v) -> incidentContainer.validateIncidentSummary(v).contains(InvalidIncidentTopic.SPECIES));
-        //speciesInvalidOut.print(Printed.toSysOut());
+        KStream<IncidentKey, Long> groupedIncidentStream = builder.stream(groupedDataTopic, Consumed.with(keySerde, Serdes.Long()))
+                .filter((k, v) -> k.aircraftDamage());
+        groupedIncidentStream.print(Printed.toSysOut());
 
-        return invalidStream;
+        return rawIncidentStream;
     }
 }
