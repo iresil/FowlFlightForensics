@@ -140,7 +140,7 @@ public class IncidentValidator extends BaseComponent {
                     : (qty.contains("-") ? Integer.parseInt(qty.substring(0, qty.indexOf("-"))) : Integer.parseInt(qty)));
             qtyMax = (qty.contains("Over ")
                     ? 10000
-                    : (qty.contains("-") ? Integer.parseInt(qty.substring(qty.indexOf("-"))) : Integer.parseInt(qty)));
+                    : (qty.contains("-") ? Integer.parseInt(qty.substring(qty.indexOf("-") + 1)) : Integer.parseInt(qty)));
         }
         return new ImmutablePair<>(qtyMin, qtyMax);
     }
