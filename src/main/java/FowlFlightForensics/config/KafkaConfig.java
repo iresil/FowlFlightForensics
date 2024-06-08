@@ -16,15 +16,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.kafka.annotation.EnableKafkaStreams;
 import org.springframework.kafka.annotation.KafkaStreamsDefaultConfiguration;
-import org.springframework.kafka.config.KafkaStreamsConfiguration;
-import org.springframework.kafka.config.TopicBuilder;
-import org.springframework.kafka.core.DefaultKafkaProducerFactory;
-import org.springframework.kafka.core.KafkaAdmin;
-import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.config.*;
+import org.springframework.kafka.core.*;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -39,8 +36,12 @@ public class KafkaConfig extends BaseComponent {
 
     @Value("${app.kafka.topics.raw}")
     private String rawDataTopic;
-    @Value("${app.kafka.topics.grouped}")
-    private String groupedDataTopic;
+    @Value("${app.kafka.topics.cleaned}")
+    private String cleanedDataTopic;
+    @Value("${app.kafka.topics.grouped.creatures}")
+    private String groupedCreaturesTopic;
+    @Value("${app.kafka.topics.grouped.incidents}")
+    private String groupedIncidentsTopic;
     @Value("${app.kafka.topics.invalid-species}")
     private String invalidSpeciesTopic;
     @Value("${app.kafka.topics.invalid-quantity}")
@@ -69,7 +70,9 @@ public class KafkaConfig extends BaseComponent {
     @Bean
     public KafkaAdmin.NewTopics generateTopics() {
         return new KafkaAdmin.NewTopics(createKeyfulTopic(rawDataTopic),
-                createKeyfulTopic(groupedDataTopic),
+                createKeyfulTopic(cleanedDataTopic),
+                createKeyfulTopic(groupedCreaturesTopic),
+                createKeyfulTopic(groupedIncidentsTopic),
                 createKeyfulTopic(invalidSpeciesTopic),
                 createKeyfulTopic(invalidQuantityTopic),
                 createKeyfulTopic(invalidGenericTopic));
@@ -109,11 +112,11 @@ public class KafkaConfig extends BaseComponent {
     }
 
     private ProducerFactory<Object, Object> producerFactory() {
-        Map<String, Object> configProperties = getDefaultConfigurationProperties();
+        Map<String, Object> configProperties = getDefaultProducerConfig();
         return new DefaultKafkaProducerFactory<>(configProperties);
     }
 
-    private Map<String, Object> getDefaultConfigurationProperties() {
+    private Map<String, Object> getDefaultProducerConfig() {
         Map<String, Object> configProperties = new HashMap<>();
         configProperties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         configProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
@@ -146,15 +149,22 @@ public class KafkaConfig extends BaseComponent {
         props.put(StreamsConfig.NUM_STANDBY_REPLICAS_CONFIG, replicas);
         props.put(StreamsConfig.NUM_STREAM_THREADS_CONFIG, threads);
         props.put(StreamsConfig.producerPrefix(ProducerConfig.ACKS_CONFIG), "all");
+        props.put(StreamsConfig.STATE_DIR_CONFIG, Paths.get(Paths.get(".").normalize().toAbsolutePath().toString(),"kafka-streams").toString());
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         props.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroupId);
         props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");
         props.put(StreamsConfig.BUFFERED_RECORDS_PER_PARTITION_CONFIG, "500");
         props.put(JsonDeserializer.KEY_DEFAULT_TYPE, "FowlFlightForensics.domain.IncidentKey");
         props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "FowlFlightForensics.domain.IncidentSummary");
-        props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);
+        props.put(JsonSerializer.ADD_TYPE_INFO_HEADERS, "false");
+        props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, true);
 
         return new KafkaStreamsConfiguration(props);
     }
+
+    //@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_BUILDER_BEAN_NAME)
+    //public StreamsBuilderFactoryBean defaultKafkaStreamsBuilder() {
+    //    return new StreamsBuilderFactoryBean(kafkaStreamsConfig(), new CleanupConfig(true, true));
+    //}
     // endregion
 }

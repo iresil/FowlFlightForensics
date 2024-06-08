@@ -28,7 +28,7 @@ public class DataWiperService extends BaseComponent {
     @Autowired
     private AdminClient adminClient;
 
-    @Value("${app.kafka.topics.grouped}")
+    @Value("${app.kafka.topics.grouped.incidents}")
     private String groupedDataTopic;
 
     @Autowired
@@ -108,11 +108,11 @@ public class DataWiperService extends BaseComponent {
                 .groupBy((k, v) -> k, Grouped.with(keySerde, Serdes.Long()))
                 .reduce(Long::sum,
                         Materialized.<IncidentKey, Long, KeyValueStore<Bytes, byte[]>> as("AGGREGATES-STATE-STORE")
-                        .withKeySerde(keySerde)
-                        .withValueSerde(Serdes.Long())
-                        //.withStoreType(Materialized.StoreType.IN_MEMORY)
-                        //.withRetention(Duration.ofSeconds(1L))
-                        //.withCachingDisabled()
+                                .withKeySerde(keySerde)
+                                .withValueSerde(Serdes.Long())
+                                .withStoreType(Materialized.StoreType.IN_MEMORY)
+                                //.withRetention(Duration.ofSeconds(1L))
+                                //.withCachingDisabled()
                         )
                 .toStream()
                 .to(groupedDataTopic);
