@@ -71,9 +71,10 @@ public class StreamService extends BaseComponent {
                         Branched.withConsumer(kstream -> kstream.to(InvalidIncidentTopic.OTHER.getAnnotationValue())))
                 .defaultBranch(Branched.withConsumer(kstream -> {
                     kstream.map((k, v) -> new KeyValue<>(k, (long)((v.getSpeciesQuantityMin() + v.getSpeciesQuantityMax()) / 2)))
+                            .filter((k, v) -> k.aircraftDamage())
                             .groupBy((k, v) -> k, Grouped.with(keySerde, Serdes.Long()))
                             .reduce(Long::sum,
-                                    Materialized.<IncidentKey, Long, KeyValueStore<Bytes, byte[]>>as("AGGREGATES-STATE-STORE-" + UUID.randomUUID())
+                                    Materialized.<IncidentKey, Long, KeyValueStore<Bytes, byte[]>> as("AGGREGATES-STATE-STORE-" + UUID.randomUUID())
                                             .withKeySerde(keySerde)
                                             .withValueSerde(Serdes.Long())
                                             //.withStoreType(Materialized.StoreType.IN_MEMORY)
@@ -82,8 +83,9 @@ public class StreamService extends BaseComponent {
                             )
                             .toStream()
                             .to(groupedCreaturesTopic);
-                    kstream.groupBy((k, v) -> k, Grouped.with(keySerde, incidentSerde))
-                            .count(Materialized.<IncidentKey, Long, KeyValueStore<Bytes, byte[]>>as("COUNT-STATE-STORE-" + UUID.randomUUID())
+                    kstream.filter((k, v) -> k.aircraftDamage())
+                            .groupBy((k, v) -> k, Grouped.with(keySerde, incidentSerde))
+                            .count(Materialized.<IncidentKey, Long, KeyValueStore<Bytes, byte[]>> as("COUNT-STATE-STORE-" + UUID.randomUUID())
                                     .withKeySerde(keySerde)
                                     .withValueSerde(Serdes.Long())
                                     //.withStoreType(Materialized.StoreType.IN_MEMORY)
@@ -94,8 +96,7 @@ public class StreamService extends BaseComponent {
                             .to(groupedIncidentsTopic);
                 }));
 
-        KStream<IncidentKey, Long> groupedIncidentStream = builder.stream(groupedIncidentsTopic, Consumed.with(keySerde, Serdes.Long()))
-                .filter((k, v) -> k.aircraftDamage());
+        KStream<IncidentKey, Long> groupedIncidentStream = builder.stream(groupedIncidentsTopic, Consumed.with(keySerde, Serdes.Long()));
         groupedIncidentStream.print(Printed.toSysOut());
 
         return rawIncidentStream;
