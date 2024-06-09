@@ -42,6 +42,8 @@ public class KafkaConfig extends BaseComponent {
     private String groupedCreaturesTopic;
     @Value("${app.kafka.topics.grouped.incidents}")
     private String groupedIncidentsTopic;
+    @Value("${app.kafka.topics.grouped.top-n}")
+    private String topNIncidentsTopic;
     @Value("${app.kafka.topics.invalid-species}")
     private String invalidSpeciesTopic;
     @Value("${app.kafka.topics.invalid-quantity}")
@@ -73,6 +75,7 @@ public class KafkaConfig extends BaseComponent {
                 createKeyfulTopic(cleanedDataTopic),
                 createKeyfulTopic(groupedCreaturesTopic),
                 createKeyfulTopic(groupedIncidentsTopic),
+                createKeyfulTopic(topNIncidentsTopic),
                 createKeyfulTopic(invalidSpeciesTopic),
                 createKeyfulTopic(invalidQuantityTopic),
                 createKeyfulTopic(invalidGenericTopic));

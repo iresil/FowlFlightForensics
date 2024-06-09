@@ -1,12 +1,12 @@
 package FowlFlightForensics.service;
 
-import FowlFlightForensics.domain.IncidentContainer;
-import FowlFlightForensics.domain.IncidentKey;
-import FowlFlightForensics.domain.IncidentSummary;
+import FowlFlightForensics.domain.*;
 import FowlFlightForensics.enums.InvalidIncidentTopic;
 import FowlFlightForensics.util.BaseComponent;
 import FowlFlightForensics.util.serdes.JsonKeySerde;
+import FowlFlightForensics.util.serdes.JsonResultSerde;
 import FowlFlightForensics.util.serdes.JsonValueSerde;
+import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.KeyValue;
@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.Arrays;
 import java.util.UUID;
 
 @Configuration
@@ -29,6 +30,8 @@ public class StreamService extends BaseComponent {
     private String groupedCreaturesTopic;
     @Value("${app.kafka.topics.grouped.incidents}")
     private String groupedIncidentsTopic;
+    @Value("${app.kafka.topics.grouped.top-n}")
+    private String topNIncidentsTopic;
 
     private final IncidentContainer incidentContainer = IncidentContainer.INSTANCE.getInstance();
 
@@ -100,5 +103,44 @@ public class StreamService extends BaseComponent {
         groupedIncidentStream.print(Printed.toSysOut());
 
         return rawIncidentStream;
+    }
+
+    //@Bean
+    @Deprecated
+    public KStream<IncidentKey, Long> getTopEntries(StreamsBuilder builder) {
+        JsonKeySerde keySerde = new JsonKeySerde();
+        Serde<Long> valueSerde = Serdes.Long();
+        JsonResultSerde resultSerde = new JsonResultSerde();
+
+        KStream<IncidentKey, Long> groupedIncidentStream = builder.stream(groupedIncidentsTopic, Consumed.with(keySerde, valueSerde));
+        groupedIncidentStream
+                // for each key value perform an aggregation
+                .groupBy((k, v) -> k, Grouped.with(keySerde, valueSerde))
+                .aggregate(
+                        // first initialize a new container object, initially empty
+                        TopNContainer::new,
+                        // for each item, invoke the aggregator
+                        (k, v, agg) -> {
+                            // add the new object as the last element in the list
+                            agg.add(new IncidentResult(k.year(), k.month(), k.speciesId(), k.speciesName(), v));
+                            // sort the array by count, largest first
+                            Arrays.sort(
+                                    agg.getArray(), (a, b) -> {
+                                        // in the initial cycles, not all nrs element contain a CountryMessage object
+                                        if (a == null)  return 1;
+                                        if (b == null)  return -1;
+                                        // with two proper objects, do the normal comparison
+                                        return Long.compare(((IncidentResult)b).amount(), ((IncidentResult)a).amount());
+                                    }
+                            );
+                            return (agg);
+                        })
+                .toStream()
+                .to(topNIncidentsTopic, Produced.with(keySerde, resultSerde));
+
+        KStream<IncidentKey, TopNContainer> finalStream = builder.stream(topNIncidentsTopic, Consumed.with(keySerde, resultSerde));
+        finalStream.print(Printed.toSysOut());
+
+        return groupedIncidentStream;
     }
 }
