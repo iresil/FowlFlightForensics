@@ -76,14 +76,20 @@ public class StreamService extends BaseComponent {
                                     Materialized.<IncidentKey, Long, KeyValueStore<Bytes, byte[]>>as("AGGREGATES-STATE-STORE-" + UUID.randomUUID())
                                             .withKeySerde(keySerde)
                                             .withValueSerde(Serdes.Long())
-                                            .withStoreType(Materialized.StoreType.IN_MEMORY)
+                                            //.withStoreType(Materialized.StoreType.IN_MEMORY)
                                             //.withRetention(Duration.ofSeconds(1L))
                                             //.withCachingDisabled()
                             )
                             .toStream()
                             .to(groupedCreaturesTopic);
                     kstream.groupBy((k, v) -> k, Grouped.with(keySerde, incidentSerde))
-                            .count()
+                            .count(Materialized.<IncidentKey, Long, KeyValueStore<Bytes, byte[]>>as("COUNT-STATE-STORE-" + UUID.randomUUID())
+                                    .withKeySerde(keySerde)
+                                    .withValueSerde(Serdes.Long())
+                                    //.withStoreType(Materialized.StoreType.IN_MEMORY)
+                                    //.withRetention(Duration.ofSeconds(1L))
+                                    //.withCachingDisabled())
+                            )
                             .toStream()
                             .to(groupedIncidentsTopic);
                 }));

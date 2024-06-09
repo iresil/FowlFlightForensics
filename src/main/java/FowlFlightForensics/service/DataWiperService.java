@@ -110,7 +110,7 @@ public class DataWiperService extends BaseComponent {
                         Materialized.<IncidentKey, Long, KeyValueStore<Bytes, byte[]>> as("AGGREGATES-STATE-STORE")
                                 .withKeySerde(keySerde)
                                 .withValueSerde(Serdes.Long())
-                                .withStoreType(Materialized.StoreType.IN_MEMORY)
+                                //.withStoreType(Materialized.StoreType.IN_MEMORY)
                                 //.withRetention(Duration.ofSeconds(1L))
                                 //.withCachingDisabled()
                         )
