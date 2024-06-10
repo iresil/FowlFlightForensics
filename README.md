@@ -1,11 +1,17 @@
 # FowlFlightForensics
- A Kafka-based CSV processor for bird-related airplane accidents
+A Kafka-based CSV processor for bird-related airplane accidents
+
+> [!WARNING]
+> This project was created with the purpose of exploring various different scenarios related to Kafka. It should not be
+> considered production-ready by any means. Many parts of the code have been purposefully put together in a way that is
+> very far from "the Kafka way", in order to see what would happen.
 
 ## Description
 This is a project created using **Java 22** and **Spring Boot 3.2.5**, which aims to parse a CSV file, process it within
 a Kafka cluster and produce an output CSV. The input CSV file contains detailed information about aircraft accidents caused
 by various wildlife species, including the type of damage that was caused and the number of creatures that caused the incident.
 
+### Data Preparation
 The original dataset contained a lot of invalid data which had to be cleaned up in order for any sort of calculations to be
 possible. Since most of that information couldn't be deduced (and performing imputations wasn't part of the objective),
 the following steps were taken:
@@ -15,8 +21,11 @@ the following steps were taken:
 3. The contents of the input CSV were evaluated using the rules mentioned above. This was done using Java code, on
    application startup. 
 4. The total amount of issues found per rule was calculated in the Java code, and compared to the total size of the dataset.
-5. If the application of a specific rule returned fewer than 3% of the dataset's total entries, then the metric that the
-   rule in question was validating was selected as a potential candidate to be used for statistics calculation. 
+5. If the application of a specific rule identified fewer than 3% of the dataset's total entries as invalid, then the metric
+   that the rule in question was validating was selected as "valid enough" to be a potential candidate to be used for statistics
+   calculation.
+6. The metrics that were selected for statistics calculation are the same metrics on which validations will be applied
+   (to ensure that the end results will eventually make sense). The rest of the metrics will simply be ignored.
 
 ## Environment Setup
 ### Requirements
