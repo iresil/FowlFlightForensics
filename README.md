@@ -27,6 +27,41 @@ the following steps were taken:
 6. The metrics that were selected for statistics calculation are the same metrics on which validations will be applied
    (to ensure that the end results will eventually make sense). The rest of the metrics will simply be ignored.
 
+### Data Pipeline
+In general, what happens to the data during each execution is pretty straightforward:
+1. The CSV file gets loaded and parsed into a List of `IncidentDetails` objects.
+2. The objects are validated based on a predefined set of rules and the total percentage of invalid objects is calculated
+   based on each rule.
+3. Rules with an invalid object frequency under 3% are selected to be applied later.
+4. The `IncidentDetails` objects are transformed to `IncidentSummary` objects, by removing most of their fields and keeping
+   only fields of interest.
+5. Each object is sent to the `raw-data-topic`, using a Kafka **Producer**. Each message is formatted as a pair of `IncidentKey`
+   and `IncidentSummary`.
+6. The selected rules from step **(3)** are applied to all messages in that topic, using **KStreams**. Invalid messages are
+   forwarded to either `invalid-species-topic`, `invalid-quantity-topic` or `invalid-generic-topic`.
+7. The messages that are still considered valid, after the application of the selected rules, are grouped and aggregated
+   in two separate ways, using **KStreams**:
+   - By calculating the sum of average _creature_ counts, which provides a rough estimation of how many creatures in total
+     caused aircraft accidents per **year**, **month** and **species**. The results of this calculation are sent to `grouped-creatures-topic`.
+   - By calculating the total number of _incidents_, which describes how many incidents each **species** caused per **year** and
+     **month** combination. The results of this calculation are sent to `grouped-incidents-topic`.
+8. Grouped incidents are then received by a separate Kafka **Consumer**, and the **top 5 species** that caused the most incidents
+   per **year** and **month** are selected.
+9. The results are exported to a CSV file.
+
+### Caveats
+To make the application's execution easier, certain choices were made that don't align with Kafka best practices. These choices
+were made consciously, since the project itself is more of an exploration into what Kafka has to offer, instead of actual
+production-level code. Some examples of this are the following:
+- Each new execution of the code runs from scratch, without reusing any results of previous executions. To achieve this,
+  the following things are done:
+  - The local state store (the folder of which has been conveniently moved under the project's root directory) gets deleted
+    on application start up, by `DataWiperService`.
+  - All connected topics and partitions are completely emptied of messages (on application start up, by `DataWiperService`).
+  - Each time aggregations are performed and the state store is necessary, a new store name is generated using a UUID, so
+    that aggregations from previous runs aren't taken into account. This was done because there were permissions issues
+    when attempting to delete data from the state store.
+
 ## Environment Setup
 ### Requirements
 To successfully set up and run the project on a Windows machine, you first need the following things installed:
