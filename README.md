@@ -61,6 +61,11 @@ production-level code. Some examples of this are the following:
   - Each time aggregations are performed and the state store is necessary, a new store name is generated using a UUID, so
     that aggregations from previous runs aren't taken into account. This was done because there were permissions issues
     when attempting to delete data from the state store.
+- The entire pipeline is packaged in one single application. In a production environment, this code would probably be built
+  as a set of microservices, so that the appropriate resources can be dedicated to each part of the stream.
+- The stream to process gets created from a CSV file and the output gets written to a CSV file. Both files always have the
+  same contents. This doesn't make much sense from a Kafka perspective, since in a real-case scenario we would have a steady
+  stream of information being processed.
 
 ## Environment Setup
 ### Requirements
