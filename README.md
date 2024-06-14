@@ -3,7 +3,7 @@ A Kafka-based CSV processor for bird-related airplane accidents
 
 > [!WARNING]
 > This project was created with the purpose of exploring various different scenarios related to Kafka. It should not be
-> considered production-ready by any means. Many parts of the code have been purposefully put together in a way that is
+> considered production-level by any means. Many parts of the code have been purposefully put together in a way that is
 > very far from "the Kafka way", in order to see what would happen.
 
 ## Description
