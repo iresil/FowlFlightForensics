@@ -9,6 +9,7 @@ import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.config.TopicConfig;
+import org.apache.kafka.common.serialization.LongDeserializer;
 import org.apache.kafka.streams.StreamsConfig;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -18,6 +19,8 @@ import org.springframework.kafka.annotation.EnableKafkaStreams;
 import org.springframework.kafka.annotation.KafkaStreamsDefaultConfiguration;
 import org.springframework.kafka.config.*;
 import org.springframework.kafka.core.*;
+import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
+import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
@@ -169,5 +172,41 @@ public class KafkaConfig extends BaseComponent {
     //public StreamsBuilderFactoryBean defaultKafkaStreamsBuilder() {
     //    return new StreamsBuilderFactoryBean(kafkaStreamsConfig(), new CleanupConfig(true, true));
     //}
+    // endregion
+
+    // region [Consumer]
+    @Bean
+    public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Object, Object>> kafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<Object, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(genericConsumerFactory());
+        factory.setConcurrency(threads);
+        factory.getContainerProperties().setIdleBetweenPolls(500);
+        factory.getContainerProperties().setPollTimeout(5000);
+        factory.getContainerProperties().setAckCount(10);
+        factory.getContainerProperties().setAckTime(10000);
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.COUNT_TIME);
+
+        return factory;
+    }
+
+    private ConsumerFactory<Object, Object> genericConsumerFactory() {
+        return new DefaultKafkaConsumerFactory<>(new HashMap<>(getDefaultConsumerConfig()));
+    }
+
+    private Map<String, Object> getDefaultConsumerConfig() {
+        Map<String, Object> configProperties = new HashMap<>();
+        configProperties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        configProperties.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroupId);
+        configProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+        configProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class);
+        configProperties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+        configProperties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        configProperties.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, "org.apache.kafka.clients.consumer.RoundRobinAssignor");
+        configProperties.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, true);
+        configProperties.put(JsonDeserializer.KEY_DEFAULT_TYPE, "FowlFlightForensics.domain.IncidentKey");
+        configProperties.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "java.lang.Long");
+
+        return configProperties;
+    }
     // endregion
 }

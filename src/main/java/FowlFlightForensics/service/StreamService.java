@@ -99,8 +99,8 @@ public class StreamService extends BaseComponent {
                             .to(groupedIncidentsTopic);
                 }));
 
-        KStream<IncidentKey, Long> groupedIncidentStream = builder.stream(groupedIncidentsTopic, Consumed.with(keySerde, Serdes.Long()));
-        groupedIncidentStream.print(Printed.toSysOut());
+        //KStream<IncidentKey, Long> groupedIncidentStream = builder.stream(groupedIncidentsTopic, Consumed.with(keySerde, Serdes.Long()));
+        //groupedIncidentStream.print(Printed.toSysOut());
 
         return rawIncidentStream;
     }
