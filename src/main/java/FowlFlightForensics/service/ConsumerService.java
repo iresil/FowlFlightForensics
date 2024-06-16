@@ -24,8 +24,8 @@ public class ConsumerService extends BaseComponent {
     public void consumeMessages(ConsumerRecord<IncidentKey, Long> consumerRecord) {
         incidentsCount.put(consumerRecord.key(), consumerRecord.value());
 
-        //logger.info("Received {}:'{}' from {}@{}@{}.", consumerRecord.key(), consumerRecord.value(),
-        //        consumerRecord.topic(), consumerRecord.partition(), consumerRecord.offset());
+        logger.trace("Received {}:'{}' from {}@{}@{}.", consumerRecord.key(), consumerRecord.value(),
+                consumerRecord.topic(), consumerRecord.partition(), consumerRecord.offset());
     }
 
     @Scheduled(fixedRate = 5000)
@@ -42,7 +42,7 @@ public class ConsumerService extends BaseComponent {
                         entry.getKey().speciesName(), entry.getValue().toString() });
             }
         } catch (IOException e) {
-            logger.error("Error writing results to CSV file.", e);
+            logger.error("Error writing results to CSV file", e);
         }
     }
 }

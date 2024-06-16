@@ -65,7 +65,7 @@ public class ProducerService extends BaseComponent {
                         result.getProducerRecord().value(), result.getRecordMetadata().partition(),
                         result.getRecordMetadata().offset());
             } else {
-                logger.error("Unable to deliver message {}:{}.", key, value, ex);
+                logger.error("Unable to deliver message {}:{}", key, value, ex);
             }
         });
     }

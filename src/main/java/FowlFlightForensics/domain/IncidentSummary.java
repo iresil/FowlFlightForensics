@@ -47,4 +47,21 @@ public class IncidentSummary extends BaseComponent {
         }
         return result;
     }
+
+    @Override
+    public String toString() {
+        StringBuilder result = new StringBuilder("IncidentSummary { ");
+        try {
+            Field[] fields = getClass().getDeclaredFields();
+            for (Field f : fields) {
+                f.setAccessible(true);
+                result.append(f.getName()).append("=").append(f.get(this)).append(", ");
+            }
+        } catch (IllegalAccessException e) {
+            logger.error("Error attempting to retrieve declared fields for printing", e);
+        }
+        result.delete(result.length() - 2, result.length() - 1);
+        result.append(" }");
+        return result.toString();
+    }
 }

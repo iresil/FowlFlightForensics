@@ -73,7 +73,7 @@ public class IncidentValidator extends BaseComponent {
     }
 
     public Set<InvalidIncidentTopic> validateIncidentSummary(IncidentSummary summary) {
-        logger.trace("Applying summary validation rules ...");
+        logger.trace("Applying summary validation rules - {}", summary.toString());
         Map<String, IncidentSummary> resultMap = new HashMap<>();
         for (String ruleName : summaryValidationRules.keySet().stream().toList()) {
             for (ValidationRule<Object> vr : summaryValidationRules.get(ruleName)) {

@@ -24,7 +24,7 @@ public enum InvalidIncidentTopic {
         try {
             prop.load(getClass().getResourceAsStream("/application.properties"));
         } catch (IOException e) {
-            logger.error("Could not retrieve property value from enum.");
+            logger.error("Could not retrieve property value from enum", e);
         }
         return prop.getProperty(value);
     }

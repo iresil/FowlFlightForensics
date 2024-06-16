@@ -47,7 +47,7 @@ public class DataWiperService extends BaseComponent {
                     "kafka-streams"));
             logger.info("Recursive cleanup of kafka streams directory successfully completed.");
         } catch (IOException e) {
-            logger.error("Couldn't clean kafka streams directory.");
+            logger.error("Couldn't clean kafka streams directory", e);
         }
     }
 
@@ -82,7 +82,7 @@ public class DataWiperService extends BaseComponent {
                 }
             });
         } catch (InterruptedException | ExecutionException e) {
-            logger.error("Couldn't prepare topic deletion.", e);
+            logger.error("Couldn't prepare topic deletion", e);
         }
         return result;
     }
@@ -94,7 +94,7 @@ public class DataWiperService extends BaseComponent {
             try {
                 logger.info("Data deletion for topic {} completed. Low watermark for partition {}: {}", tp.topic(), tp.partition(), lowWatermark.get().lowWatermark());
             } catch (InterruptedException | ExecutionException e) {
-                logger.error("Couldn't confirm topic data deletion.", e);
+                logger.error("Couldn't confirm topic data deletion", e);
             }
         });
     }
