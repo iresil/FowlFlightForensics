@@ -66,6 +66,8 @@ production-level code. Some examples of this are the following:
 - The stream to process gets created from a CSV file and the output gets written to a CSV file. Both files always have the
   same contents. This doesn't make much sense from a Kafka perspective, since in a real-case scenario we would have a steady
   stream of information being processed.
+- The application exits after the input dataset gets successfully processed. In an actual streaming application we wouldn't
+  want this to happen, since we wouldn't know if and how soon the next set of data points would arrive.
 
 ## Environment Setup
 ### Requirements
@@ -101,7 +103,7 @@ To do this, you can execute the following commands in the WSL terminal:
   tar -xvzf kafka_2.13-3.7.0.tgz
   ```
 - To use the shell scripts included in the Kafka installation (e.g. to list available cluster members, list all topics,
-  start a consumer on a specific topic, or delete a topic):
+  start a consumer on a specific topic, or delete one or more topics):
   ```bash
   cd kafka_2.13-3.7.0/bin
   ./kafka-broker-api-versions.sh --bootstrap-server localhost:19092 | awk '/id/{print $1}' | sort
@@ -117,4 +119,8 @@ To do this, you can execute the following commands in the WSL terminal:
   ```bash
   cd kafka_2.13-3.7.0/bin
   ./kafka-topics.sh --bootstrap-server localhost:19092 --topic raw-data-topic --delete
+  ```
+  ```bash
+  cd kafka_2.13-3.7.0/bin
+  ./kafka-topics.sh --bootstrap-server localhost:19092, localhost:29092 --delete --topic 'kafka-stream-.*'
   ```

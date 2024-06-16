@@ -1,5 +1,6 @@
 package FowlFlightForensics.service;
 
+import FowlFlightForensics.FowlFlightForensicsApplication;
 import FowlFlightForensics.domain.IncidentContainer;
 import FowlFlightForensics.domain.IncidentSummary;
 import FowlFlightForensics.util.BaseComponent;
@@ -46,6 +47,7 @@ public class ProducerService extends BaseComponent {
             itemsToSend.add(incident);
             iterator.remove();
         }
+
         logger.info("Sending {} messages to {} [remaining: {}] ...", (NUM_OF_MESSAGES < itemsToSend.size() ? NUM_OF_MESSAGES : itemsToSend.size()),
                 rawDataTopic, incidentSummaryList.size());
         LongStream.range(0, NUM_OF_MESSAGES).forEach(i -> {
@@ -54,6 +56,10 @@ public class ProducerService extends BaseComponent {
                         itemsToSend.get((int) i));
             }
         });
+
+        if (itemsToSend.isEmpty() && FowlFlightForensicsApplication.lastMessageTimeInMillis == -1) {
+            FowlFlightForensicsApplication.lastMessageTimeInMillis = System.currentTimeMillis();
+        }
     }
 
     public void sendMessageWithKeyRecord(final String topic, final Object key, final Object value) {
