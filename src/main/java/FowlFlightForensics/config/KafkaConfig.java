@@ -39,8 +39,8 @@ public class KafkaConfig extends BaseComponent {
 
     @Value("${app.kafka.topics.raw}")
     private String rawDataTopic;
-    @Value("${app.kafka.topics.cleaned}")
-    private String cleanedDataTopic;
+    @Value("${app.kafka.topics.clean}")
+    private String cleanDataTopic;
     @Value("${app.kafka.topics.grouped.creatures}")
     private String groupedCreaturesTopic;
     @Value("${app.kafka.topics.grouped.incidents}")
@@ -75,7 +75,7 @@ public class KafkaConfig extends BaseComponent {
     @Bean
     public KafkaAdmin.NewTopics generateTopics() {
         return new KafkaAdmin.NewTopics(createKeyfulTopic(rawDataTopic),
-                createKeyfulTopic(cleanedDataTopic),
+                createKeyfulTopic(cleanDataTopic),
                 createKeyfulTopic(groupedCreaturesTopic),
                 createKeyfulTopic(groupedIncidentsTopic),
                 createKeyfulTopic(topNIncidentsTopic),
@@ -160,8 +160,6 @@ public class KafkaConfig extends BaseComponent {
         props.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroupId);
         props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");
         props.put(StreamsConfig.BUFFERED_RECORDS_PER_PARTITION_CONFIG, "500");
-        props.put(JsonDeserializer.KEY_DEFAULT_TYPE, "FowlFlightForensics.domain.IncidentKey");
-        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "FowlFlightForensics.domain.IncidentSummary");
         props.put(JsonSerializer.ADD_TYPE_INFO_HEADERS, "false");
         props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, true);
 

@@ -9,7 +9,6 @@ import FowlFlightForensics.util.serdes.JsonValueSerde;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.utils.Bytes;
-import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.state.KeyValueStore;
@@ -24,8 +23,8 @@ import java.util.UUID;
 public class StreamService extends BaseComponent {
     @Value("${app.kafka.topics.raw}")
     private String rawDataTopic;
-    @Value("${app.kafka.topics.cleaned}")
-    private String cleanedDataTopic;
+    @Value("${app.kafka.topics.clean}")
+    private String cleanDataTopic;
     @Value("${app.kafka.topics.grouped.creatures}")
     private String groupedCreaturesTopic;
     @Value("${app.kafka.topics.grouped.incidents}")
@@ -72,37 +71,48 @@ public class StreamService extends BaseComponent {
                         Branched.withConsumer(kstream -> kstream.to(InvalidIncidentTopic.QUANTITY.getAnnotationValue())))
                 .branch((k, v) -> incidentContainer.validateIncidentSummary(v).contains(InvalidIncidentTopic.OTHER),
                         Branched.withConsumer(kstream -> kstream.to(InvalidIncidentTopic.OTHER.getAnnotationValue())))
-                .defaultBranch(Branched.withConsumer(kstream -> {
-                    kstream.map((k, v) -> new KeyValue<>(k, (long)((v.getSpeciesQuantityMin() + v.getSpeciesQuantityMax()) / 2)))
-                            .filter((k, v) -> k.aircraftDamage())
-                            .groupBy((k, v) -> k, Grouped.with(keySerde, Serdes.Long()))
-                            .reduce(Long::sum,
-                                    Materialized.<IncidentKey, Long, KeyValueStore<Bytes, byte[]>> as("AGGREGATES-STATE-STORE-" + UUID.randomUUID())
-                                            .withKeySerde(keySerde)
-                                            .withValueSerde(Serdes.Long())
-                                            //.withStoreType(Materialized.StoreType.IN_MEMORY)
-                                            //.withRetention(Duration.ofSeconds(1L))
-                                            //.withCachingDisabled()
-                            )
-                            .toStream()
-                            .to(groupedCreaturesTopic);
-                    kstream.filter((k, v) -> k.aircraftDamage())
-                            .groupBy((k, v) -> k, Grouped.with(keySerde, incidentSerde))
-                            .count(Materialized.<IncidentKey, Long, KeyValueStore<Bytes, byte[]>> as("COUNT-STATE-STORE-" + UUID.randomUUID())
-                                    .withKeySerde(keySerde)
-                                    .withValueSerde(Serdes.Long())
-                                    //.withStoreType(Materialized.StoreType.IN_MEMORY)
-                                    //.withRetention(Duration.ofSeconds(1L))
-                                    //.withCachingDisabled())
-                            )
-                            .toStream()
-                            .to(groupedIncidentsTopic);
-                }));
+                .branch((k, v) -> k.aircraftDamage(), Branched.withConsumer(kstream -> kstream.to(cleanDataTopic)))
+                .noDefaultBranch();
 
-        //KStream<IncidentKey, Long> groupedIncidentStream = builder.stream(groupedIncidentsTopic, Consumed.with(keySerde, Serdes.Long()));
-        //groupedIncidentStream.print(Printed.toSysOut());
+        //KStream<IncidentKey, IncidentSummary> cleanIncidentStream = builder.stream(cleanDataTopic, Consumed.with(keySerde, incidentSerde));
+        //cleanIncidentStream.print(Printed.toSysOut());
 
         return rawIncidentStream;
+    }
+
+    @Bean
+    public KStream<IncidentKey, Long> streamGroup(StreamsBuilder builder) {
+        JsonKeySerde keySerde = new JsonKeySerde();
+        JsonValueSerde incidentSerde = new JsonValueSerde();
+
+        KStream<IncidentKey, IncidentSummary> cleanIncidentStream = builder.stream(cleanDataTopic, Consumed.with(keySerde, incidentSerde));
+        cleanIncidentStream.mapValues(v -> (long)((v.getSpeciesQuantityMin() + v.getSpeciesQuantityMax()) / 2))
+                .groupByKey(Grouped.with(keySerde, Serdes.Long()))
+                .reduce(Long::sum,
+                        Materialized.<IncidentKey, Long, KeyValueStore<Bytes, byte[]>> as("AGGREGATES-STATE-STORE-" + UUID.randomUUID())
+                                .withKeySerde(keySerde)
+                                .withValueSerde(Serdes.Long())
+                                //.withStoreType(Materialized.StoreType.IN_MEMORY)
+                                //.withRetention(Duration.ofSeconds(1L))
+                                //.withCachingDisabled()
+                )
+                .toStream()
+                .to(groupedCreaturesTopic);
+        cleanIncidentStream.groupByKey(Grouped.with(keySerde, incidentSerde))
+                .count(Materialized.<IncidentKey, Long, KeyValueStore<Bytes, byte[]>> as("COUNT-STATE-STORE-" + UUID.randomUUID())
+                                .withKeySerde(keySerde)
+                                .withValueSerde(Serdes.Long())
+                                //.withStoreType(Materialized.StoreType.IN_MEMORY)
+                                //.withRetention(Duration.ofSeconds(1L))
+                                //.withCachingDisabled())
+                )
+                .toStream()
+                .to(groupedIncidentsTopic);
+
+        KStream<IncidentKey, Long> groupedIncidentStream = builder.stream(groupedIncidentsTopic, Consumed.with(keySerde, Serdes.Long()));
+        groupedIncidentStream.print(Printed.toSysOut());
+
+        return groupedIncidentStream;
     }
 
     //@Bean
