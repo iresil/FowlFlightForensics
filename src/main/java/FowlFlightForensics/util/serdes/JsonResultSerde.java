@@ -1,13 +1,12 @@
 package FowlFlightForensics.util.serdes;
 
-import FowlFlightForensics.domain.TopNContainer;
+import FowlFlightForensics.domain.IncidentResult;
 import org.apache.kafka.common.serialization.Serdes;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
-@Deprecated
-public class JsonResultSerde extends Serdes.WrapperSerde<TopNContainer> {
+public class JsonResultSerde extends Serdes.WrapperSerde<IncidentResult> {
     public JsonResultSerde() {
-        super(new JsonSerializer<>(), new JsonDeserializer<>(TopNContainer.class));
+        super(new JsonSerializer<>(), new JsonDeserializer<>(IncidentResult.class));
     }
 }

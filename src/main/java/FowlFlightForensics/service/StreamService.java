@@ -6,9 +6,9 @@ import FowlFlightForensics.util.BaseComponent;
 import FowlFlightForensics.util.serdes.JsonKeySerde;
 import FowlFlightForensics.util.serdes.JsonResultSerde;
 import FowlFlightForensics.util.serdes.JsonValueSerde;
-import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.utils.Bytes;
+import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.state.KeyValueStore;
@@ -16,8 +16,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.Arrays;
-import java.util.UUID;
+import java.util.*;
 
 @Configuration
 public class StreamService extends BaseComponent {
@@ -81,7 +80,7 @@ public class StreamService extends BaseComponent {
     }
 
     @Bean
-    public KStream<IncidentKey, Long> streamGroup(StreamsBuilder builder) {
+    public KStream<IncidentKey, IncidentSummary> streamGroup(StreamsBuilder builder) {
         JsonKeySerde keySerde = new JsonKeySerde();
         JsonValueSerde incidentSerde = new JsonValueSerde();
 
@@ -92,9 +91,6 @@ public class StreamService extends BaseComponent {
                         Materialized.<IncidentKey, Long, KeyValueStore<Bytes, byte[]>> as("AGGREGATES-STATE-STORE-" + UUID.randomUUID())
                                 .withKeySerde(keySerde)
                                 .withValueSerde(Serdes.Long())
-                                //.withStoreType(Materialized.StoreType.IN_MEMORY)
-                                //.withRetention(Duration.ofSeconds(1L))
-                                //.withCachingDisabled()
                 )
                 .toStream()
                 .to(groupedCreaturesTopic);
@@ -102,53 +98,45 @@ public class StreamService extends BaseComponent {
                 .count(Materialized.<IncidentKey, Long, KeyValueStore<Bytes, byte[]>> as("COUNT-STATE-STORE-" + UUID.randomUUID())
                                 .withKeySerde(keySerde)
                                 .withValueSerde(Serdes.Long())
-                                //.withStoreType(Materialized.StoreType.IN_MEMORY)
-                                //.withRetention(Duration.ofSeconds(1L))
-                                //.withCachingDisabled())
                 )
                 .toStream()
                 .to(groupedIncidentsTopic);
 
-        KStream<IncidentKey, Long> groupedIncidentStream = builder.stream(groupedIncidentsTopic, Consumed.with(keySerde, Serdes.Long()));
-        groupedIncidentStream.print(Printed.toSysOut());
+        //KStream<IncidentKey, Long> groupedIncidentStream = builder.stream(groupedIncidentsTopic, Consumed.with(keySerde, Serdes.Long()));
+        //groupedIncidentStream.print(Printed.toSysOut());
 
-        return groupedIncidentStream;
+        return cleanIncidentStream;
     }
 
-    //@Bean
-    @Deprecated
-    public KStream<IncidentKey, Long> getTopEntries(StreamsBuilder builder) {
+    @Bean
+    public KStream<Integer, IncidentResult> getTopEntries(StreamsBuilder builder) {
         JsonKeySerde keySerde = new JsonKeySerde();
-        Serde<Long> valueSerde = Serdes.Long();
         JsonResultSerde resultSerde = new JsonResultSerde();
 
-        KStream<IncidentKey, Long> groupedIncidentStream = builder.stream(groupedIncidentsTopic, Consumed.with(keySerde, valueSerde));
-        groupedIncidentStream
-                // for each key value perform an aggregation
-                .groupBy((k, v) -> k, Grouped.with(keySerde, valueSerde))
+        KStream<Integer, IncidentResult> groupedIncidentStream = builder.stream(groupedIncidentsTopic, Consumed.with(keySerde, Serdes.Long()))
+                .map((k, v) -> KeyValue.pair(0, new IncidentResult(k.year(), k.month(), k.speciesId(), k.speciesName(), v)));
+        groupedIncidentStream.groupByKey(Grouped.with(Serdes.Integer(), resultSerde))
                 .aggregate(
-                        // first initialize a new container object, initially empty
-                        TopNContainer::new,
-                        // for each item, invoke the aggregator
+                        // Initialize a new ArrayList
+                        ArrayList::new,
+                        // Invoke the aggregator for each item
                         (k, v, agg) -> {
-                            // add the new object as the last element in the list
-                            agg.add(new IncidentResult(k.year(), k.month(), k.speciesId(), k.speciesName(), v));
-                            // sort the array by count, largest first
-                            Arrays.sort(
-                                    agg.getArray(), (a, b) -> {
-                                        // in the initial cycles, not all nrs element contain a CountryMessage object
-                                        if (a == null)  return 1;
-                                        if (b == null)  return -1;
-                                        // with two proper objects, do the normal comparison
-                                        return Long.compare(((IncidentResult)b).amount(), ((IncidentResult)a).amount());
-                                    }
-                            );
-                            return (agg);
-                        })
+                            // Add the new item as the last element in the list
+                            agg.add(v);
+                            // Sort the ArrayList by amount, largest first
+                            agg.sort((i1, i2) -> Long.compare(((IncidentResult)i2).amount(), ((IncidentResult)i1).amount()));
+                            // Only return the first 10 items, if available
+                            int upper = Math.min(agg.size(), 10);
+                            return new ArrayList<>(agg.subList(0, upper));
+                        }, Materialized.<Integer, List<IncidentResult>, KeyValueStore<Bytes, byte[]>> as("FINAL-STATE-STORE-" + UUID.randomUUID())
+                                .withKeySerde(Serdes.Integer())
+                                .withValueSerde(Serdes.ListSerde(ArrayList.class, resultSerde))
+                        )
                 .toStream()
-                .to(topNIncidentsTopic, Produced.with(keySerde, resultSerde));
+                .to(topNIncidentsTopic, Produced.with(Serdes.Integer(), Serdes.ListSerde(ArrayList.class, resultSerde)));
 
-        KStream<IncidentKey, TopNContainer> finalStream = builder.stream(topNIncidentsTopic, Consumed.with(keySerde, resultSerde));
+        KStream<Integer, List<IncidentResult>> finalStream = builder.stream(topNIncidentsTopic,
+                Consumed.with(Serdes.Integer(), Serdes.ListSerde(ArrayList.class, resultSerde)));
         finalStream.print(Printed.toSysOut());
 
         return groupedIncidentStream;
