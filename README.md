@@ -39,15 +39,15 @@ In general, what happens to the data during each execution is pretty straightfor
    and `IncidentSummary`.
 6. The selected rules from step **(3)** are applied to all messages in that topic, using **KStreams**. Invalid messages are
    forwarded to either `invalid-species-topic`, `invalid-quantity-topic` or `invalid-generic-topic`.
-7. The messages that are still considered valid, after the application of the selected rules, are grouped and aggregated
-   in two separate ways, using **KStreams**:
+7. The messages that are still considered valid after the application of the selected rules, are sent to `clean-data-topic`. 
+8. The messages from step **(7)** are grouped and aggregated in two separate ways, using **KStreams**:
    - By calculating the sum of average _creature_ counts, which provides a rough estimation of how many creatures in total
      caused aircraft accidents per **year**, **month** and **species**. The results of this calculation are sent to `grouped-creatures-topic`.
    - By calculating the total number of _incidents_, which describes how many incidents each **species** caused per **year** and
      **month** combination. The results of this calculation are sent to `grouped-incidents-topic`.
-8. Grouped incidents are then received by a separate Kafka **Consumer**, and the **top 5 species** that caused the most incidents
-   per **year** and **month** are selected.
-9. The results are exported to a CSV file.
+9. Grouped incidents are then received by a separate Kafka **Consumer**, and the **top N species** that caused the most incidents
+   per **year** and **month** are selected (where **N** is a configurable number).
+10. The results are exported to a CSV file.
 
 ### Caveats
 To make the application's execution easier, certain choices were made that don't align with Kafka best practices. These choices
