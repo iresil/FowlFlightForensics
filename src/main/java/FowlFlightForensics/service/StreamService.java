@@ -17,6 +17,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Configuration
 public class StreamService extends BaseComponent {
@@ -109,34 +110,26 @@ public class StreamService extends BaseComponent {
     }
 
     @Bean
-    public KStream<Integer, IncidentResult> getTopEntries(StreamsBuilder builder) {
+    public KStream<IncidentResult, Long> getTopEntries(StreamsBuilder builder) {
         JsonKeySerde keySerde = new JsonKeySerde();
         JsonResultSerde resultSerde = new JsonResultSerde();
 
-        KStream<Integer, IncidentResult> groupedIncidentStream = builder.stream(groupedIncidentsTopic, Consumed.with(keySerde, Serdes.Long()))
-                .map((k, v) -> KeyValue.pair(0, new IncidentResult(k.year(), k.month(), k.speciesId(), k.speciesName(), v)));
-        groupedIncidentStream.groupByKey(Grouped.with(Serdes.Integer(), resultSerde))
+        KStream<IncidentResult, Long> groupedIncidentStream = builder.stream(groupedIncidentsTopic, Consumed.with(keySerde, Serdes.Long()))
+                .map((k, v) -> KeyValue.pair(new IncidentResult(k.year(), k.speciesId(), k.speciesName()), v));
+        groupedIncidentStream.groupByKey(Grouped.with(resultSerde, Serdes.Long()))
                 .aggregate(
                         // Initialize a new ArrayList
-                        ArrayList::new,
+                        () -> 0L,
                         // Invoke the aggregator for each item
-                        (k, v, agg) -> {
-                            // Add the new item as the last element in the list
-                            agg.add(v);
-                            // Sort the ArrayList by amount, largest first
-                            agg.sort((i1, i2) -> Long.compare(((IncidentResult)i2).amount(), ((IncidentResult)i1).amount()));
-                            // Only return the first 10 items, if available
-                            int upper = Math.min(agg.size(), 10);
-                            return new ArrayList<>(agg.subList(0, upper));
-                        }, Materialized.<Integer, List<IncidentResult>, KeyValueStore<Bytes, byte[]>> as("FINAL-STATE-STORE-" + UUID.randomUUID())
-                                .withKeySerde(Serdes.Integer())
-                                .withValueSerde(Serdes.ListSerde(ArrayList.class, resultSerde))
-                        )
+                        (k, v, agg) -> agg + v,
+                        Materialized.<IncidentResult, Long, KeyValueStore<Bytes, byte[]>> as("FINAL-STATE-STORE-" + UUID.randomUUID())
+                                .withKeySerde(resultSerde)
+                                .withValueSerde(Serdes.Long())
+                )
                 .toStream()
-                .to(topNIncidentsTopic, Produced.with(Serdes.Integer(), Serdes.ListSerde(ArrayList.class, resultSerde)));
+                .to(topNIncidentsTopic, Produced.with(resultSerde, Serdes.Long()));
 
-        KStream<Integer, List<IncidentResult>> finalStream = builder.stream(topNIncidentsTopic,
-                Consumed.with(Serdes.Integer(), Serdes.ListSerde(ArrayList.class, resultSerde)));
+        KStream<IncidentResult, Long> finalStream = builder.stream(topNIncidentsTopic, Consumed.with(resultSerde, Serdes.Long()));
         finalStream.print(Printed.toSysOut());
 
         return groupedIncidentStream;

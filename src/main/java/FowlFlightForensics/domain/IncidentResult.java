@@ -1,4 +1,4 @@
 package FowlFlightForensics.domain;
 
-public record IncidentResult (Integer year, Integer month, String speciesId, String speciesName, Long amount) {
+public record IncidentResult (Integer year, String speciesId, String speciesName) {
 }
