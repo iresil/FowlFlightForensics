@@ -12,12 +12,13 @@ import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.state.KeyValueStore;
+import org.apache.kafka.streams.state.WindowStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Configuration
 public class StreamService extends BaseComponent {
@@ -89,7 +90,7 @@ public class StreamService extends BaseComponent {
         cleanIncidentStream.mapValues(v -> (long)((v.getSpeciesQuantityMin() + v.getSpeciesQuantityMax()) / 2))
                 .groupByKey(Grouped.with(keySerde, Serdes.Long()))
                 .reduce(Long::sum,
-                        Materialized.<IncidentKey, Long, KeyValueStore<Bytes, byte[]>> as("AGGREGATES-STATE-STORE-" + UUID.randomUUID())
+                        Materialized.<IncidentKey, Long, KeyValueStore<Bytes, byte[]>> as("REDUCE-STATE-STORE-" + UUID.randomUUID())
                                 .withKeySerde(keySerde)
                                 .withValueSerde(Serdes.Long())
                 )
@@ -115,6 +116,14 @@ public class StreamService extends BaseComponent {
         JsonResultSerde resultSerde = new JsonResultSerde();
 
         KStream<IncidentResult, Long> groupedIncidentStream = builder.stream(groupedIncidentsTopic, Consumed.with(keySerde, Serdes.Long()))
+                .groupByKey(Grouped.with(keySerde, Serdes.Long()))
+                .windowedBy(TimeWindows.of(Duration.ofSeconds(40L)))
+                .reduce((v1, v2) -> v2,
+                        Materialized.<IncidentKey, Long, WindowStore<Bytes, byte[]>> as("WINDOW-STATE-STORE-" + UUID.randomUUID())
+                                .withKeySerde(keySerde)
+                                .withValueSerde(Serdes.Long())
+                ).suppress(Suppressed.untilTimeLimit(Duration.ofSeconds(40L), Suppressed.BufferConfig.unbounded()))
+                .toStream().map((key, value) -> KeyValue.pair(key.key(), value))
                 .map((k, v) -> KeyValue.pair(new IncidentResult(k.year(), k.speciesId(), k.speciesName()), v));
         groupedIncidentStream.groupByKey(Grouped.with(resultSerde, Serdes.Long()))
                 .aggregate(
