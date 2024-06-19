@@ -118,7 +118,7 @@ public class StreamService extends BaseComponent {
                 .map((k, v) -> KeyValue.pair(new IncidentResult(k.year(), k.speciesId(), k.speciesName()), v));
         groupedIncidentStream.groupByKey(Grouped.with(resultSerde, Serdes.Long()))
                 .aggregate(
-                        // Initialize a new ArrayList
+                        // Initialize the result
                         () -> 0L,
                         // Invoke the aggregator for each item
                         (k, v, agg) -> agg + v,
