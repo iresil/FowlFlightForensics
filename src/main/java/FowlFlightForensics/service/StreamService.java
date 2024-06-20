@@ -4,8 +4,9 @@ import FowlFlightForensics.domain.*;
 import FowlFlightForensics.enums.InvalidIncidentTopic;
 import FowlFlightForensics.util.BaseComponent;
 import FowlFlightForensics.util.serdes.JsonKeySerde;
-import FowlFlightForensics.util.serdes.JsonResultSerde;
 import FowlFlightForensics.util.serdes.JsonValueSerde;
+import FowlFlightForensics.util.serdes.JsonGroupedSerde;
+import FowlFlightForensics.util.serdes.JsonRankedSerde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.KeyValue;
@@ -19,6 +20,7 @@ import org.springframework.context.annotation.Configuration;
 
 import java.time.Duration;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Configuration
 public class StreamService extends BaseComponent {
@@ -111,34 +113,62 @@ public class StreamService extends BaseComponent {
     }
 
     @Bean
-    public KStream<IncidentResult, Long> getTopEntries(StreamsBuilder builder) {
+    public KStream<IncidentGrouped, Long> getTopEntries(StreamsBuilder builder) {
         JsonKeySerde keySerde = new JsonKeySerde();
-        JsonResultSerde resultSerde = new JsonResultSerde();
+        JsonGroupedSerde groupedSerde = new JsonGroupedSerde();
+        JsonRankedSerde countSerde = new JsonRankedSerde();
 
-        KStream<IncidentResult, Long> groupedIncidentStream = builder.stream(groupedIncidentsTopic, Consumed.with(keySerde, Serdes.Long()))
+        // Use only the last values within a time window
+        KStream<IncidentGrouped, Long> groupedIncidentStream = builder.stream(groupedIncidentsTopic, Consumed.with(keySerde, Serdes.Long()))
                 .groupByKey(Grouped.with(keySerde, Serdes.Long()))
-                .windowedBy(TimeWindows.of(Duration.ofSeconds(40L)))
+                .windowedBy(TimeWindows.ofSizeWithNoGrace(Duration.ofSeconds(40L)))
                 .reduce((v1, v2) -> v2,
                         Materialized.<IncidentKey, Long, WindowStore<Bytes, byte[]>> as("WINDOW-STATE-STORE-" + UUID.randomUUID())
                                 .withKeySerde(keySerde)
                                 .withValueSerde(Serdes.Long())
                 ).suppress(Suppressed.untilTimeLimit(Duration.ofSeconds(40L), Suppressed.BufferConfig.unbounded()))
                 .toStream().map((key, value) -> KeyValue.pair(key.key(), value))
-                .map((k, v) -> KeyValue.pair(new IncidentResult(k.year(), k.speciesId(), k.speciesName()), v));
-        groupedIncidentStream.groupByKey(Grouped.with(resultSerde, Serdes.Long()))
+                .map((k, v) -> KeyValue.pair(new IncidentGrouped(k.year(), k.speciesId(), k.speciesName()), v));
+
+        // Count incidents caused by each species within the same year
+        KStream<Integer, IncidentRanked> aggregatedIncidentStream = groupedIncidentStream.groupByKey(Grouped.with(groupedSerde, Serdes.Long()))
                 .aggregate(
                         // Initialize the result
                         () -> 0L,
-                        // Invoke the aggregator for each item
+                        // Perform the addition
                         (k, v, agg) -> agg + v,
-                        Materialized.<IncidentResult, Long, KeyValueStore<Bytes, byte[]>> as("FINAL-STATE-STORE-" + UUID.randomUUID())
-                                .withKeySerde(resultSerde)
+                        Materialized.<IncidentGrouped, Long, KeyValueStore<Bytes, byte[]>> as("AGGREGATE-STATE-STORE-" + UUID.randomUUID())
+                                .withKeySerde(groupedSerde)
                                 .withValueSerde(Serdes.Long())
                 )
                 .toStream()
-                .to(topNIncidentsTopic, Produced.with(resultSerde, Serdes.Long()));
+                .map((k, v) -> KeyValue.pair(k.year(), new IncidentRanked(0, k.year(), k.speciesId(), k.speciesName(), v)));
 
-        KStream<IncidentResult, Long> finalStream = builder.stream(topNIncidentsTopic, Consumed.with(resultSerde, Serdes.Long()));
+        // Get the top N species per year that caused aircraft accidents
+        aggregatedIncidentStream.groupByKey(Grouped.with(Serdes.Integer(), countSerde))
+                .aggregate(
+                        // Initialize a new ArrayList
+                        ArrayList::new,
+                        // Invoke the aggregator for each item
+                        (k, v, agg) -> {
+                            // Add the new item as the last element in the list
+                            agg.add(v);
+                            // Sort the ArrayList by amount, largest first
+                            agg.sort((i1, i2) -> Long.compare(((IncidentRanked)i2).amount(), ((IncidentRanked)i1).amount()));
+                            // Only return the first N items, if available
+                            int upper = Math.min(agg.size(), 5);
+                            return new ArrayList<>(agg.subList(0, upper));
+                        }, Materialized.<Integer, List<IncidentRanked>, KeyValueStore<Bytes, byte[]>> as("FINAL-STATE-STORE-" + UUID.randomUUID())
+                                .withKeySerde(Serdes.Integer())
+                                .withValueSerde(Serdes.ListSerde(ArrayList.class, countSerde))
+                )
+                .toStream()
+                .map((k, v) -> KeyValue.pair(k, ((List<IncidentRanked>)v).stream().map(i -> new IncidentRanked(((List<IncidentRanked>)v).indexOf(i),
+                        i.year(), i.speciesId(), i.speciesName(), i.amount())).collect(Collectors.toList())))
+                .to(topNIncidentsTopic, Produced.with(Serdes.Integer(), Serdes.ListSerde(ArrayList.class, countSerde)));
+
+        KStream<Integer, List<IncidentRanked>> finalStream = builder.stream(topNIncidentsTopic, Consumed.with(Serdes.Integer(),
+                Serdes.ListSerde(ArrayList.class, countSerde)));
         finalStream.print(Printed.toSysOut());
 
         return groupedIncidentStream;
