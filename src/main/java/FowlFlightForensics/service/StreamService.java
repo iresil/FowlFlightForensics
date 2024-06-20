@@ -126,7 +126,8 @@ public class StreamService extends BaseComponent {
                         Materialized.<IncidentKey, Long, WindowStore<Bytes, byte[]>> as("WINDOW-STATE-STORE-" + UUID.randomUUID())
                                 .withKeySerde(keySerde)
                                 .withValueSerde(Serdes.Long())
-                ).suppress(Suppressed.untilTimeLimit(Duration.ofSeconds(40L), Suppressed.BufferConfig.unbounded()))
+                ).suppress(Suppressed.untilTimeLimit(Duration.ofSeconds(40L), Suppressed.BufferConfig.unbounded())
+                        .withName("SUPPRESS-STATE-STORE-" + UUID.randomUUID()))
                 .toStream().map((key, value) -> KeyValue.pair(key.key(), value))
                 .map((k, v) -> KeyValue.pair(new IncidentGrouped(k.year(), k.speciesId(), k.speciesName()), v));
 
