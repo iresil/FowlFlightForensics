@@ -4,6 +4,7 @@ import FowlFlightForensics.FowlFlightForensicsApplication;
 import FowlFlightForensics.domain.IncidentContainer;
 import FowlFlightForensics.domain.IncidentSummary;
 import FowlFlightForensics.util.BaseComponent;
+import FowlFlightForensics.util.Consts;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -27,8 +28,6 @@ public class ProducerService extends BaseComponent {
     @Value("${app.kafka.topics.raw}")
     private String rawDataTopic;
 
-    private static final Integer NUM_OF_MESSAGES = 1000;
-
     private final KafkaTemplate<Object, Object> kafkaTemplate;
     private final IncidentContainer incidentContainer = IncidentContainer.INSTANCE.getInstance();
     private List<IncidentSummary> incidentSummaryList;
@@ -38,26 +37,27 @@ public class ProducerService extends BaseComponent {
         incidentSummaryList = incidentContainer.getIncidentSummaryList();
     }
 
-    @Scheduled(cron = "0/1 * * * * ?")
+    @Scheduled(cron = "${app.producer.send-message.cron}")
     public void produceMessages() {
         Iterator<IncidentSummary> iterator = incidentSummaryList.iterator();
         List<IncidentSummary> itemsToSend = new ArrayList<>();
-        for (int i = 0; i < incidentSummaryList.size() && i < NUM_OF_MESSAGES; i++) {
+        for (int i = 0; i < incidentSummaryList.size() && i < Consts.NUM_OF_MESSAGES_PER_BATCH; i++) {
             IncidentSummary incident = iterator.next();
             itemsToSend.add(incident);
             iterator.remove();
         }
 
-        logger.info("Sending {} messages to {} [remaining: {}] ...", (NUM_OF_MESSAGES < itemsToSend.size() ? NUM_OF_MESSAGES : itemsToSend.size()),
+        logger.info("Sending {} messages to {} [remaining: {}] ...", Math.min(Consts.NUM_OF_MESSAGES_PER_BATCH, itemsToSend.size()),
                 rawDataTopic, incidentSummaryList.size());
-        LongStream.range(0, NUM_OF_MESSAGES).forEach(i -> {
+        LongStream.range(0, Consts.NUM_OF_MESSAGES_PER_BATCH).forEach(i -> {
             if (i < itemsToSend.size()) {
                 sendMessageWithKeyRecord(rawDataTopic, itemsToSend.get((int) i).getKey(),
                         itemsToSend.get((int) i));
             }
         });
 
-        if (itemsToSend.isEmpty() && FowlFlightForensicsApplication.lastMessageTimeInMillis == -1) {
+        if (itemsToSend.isEmpty()
+                && FowlFlightForensicsApplication.lastMessageTimeInMillis == Consts.LAST_MESSAGE_TIME_MILLIS_DEFAULT_VALUE) {
             FowlFlightForensicsApplication.lastMessageTimeInMillis = System.currentTimeMillis();
         }
     }

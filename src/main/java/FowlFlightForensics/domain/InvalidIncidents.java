@@ -1,12 +1,14 @@
 package FowlFlightForensics.domain;
 
 import FowlFlightForensics.util.BaseComponent;
+import FowlFlightForensics.util.Consts;
 
 import java.lang.reflect.Field;
 import java.util.*;
 
 public class InvalidIncidents extends BaseComponent {
-    private final float MISSING_THRESHOLD = 0.03f;
+    private final float MISSING_THRESHOLD =
+            Consts.INVALID_INCIDENTS_FILTER_VIA_MAX ? Consts.INVALID_INCIDENTS_PERCENTAGE_LIMIT_MAX : Consts.INVALID_INCIDENTS_PERCENTAGE_LIMIT_MIN;
 
     public List<IncidentSummary> invalidYear = new ArrayList<>();
     public List<IncidentSummary> invalidMonth = new ArrayList<>();

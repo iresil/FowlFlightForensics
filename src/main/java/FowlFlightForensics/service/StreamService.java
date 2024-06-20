@@ -35,6 +35,11 @@ public class StreamService extends BaseComponent {
     @Value("${app.kafka.topics.grouped.top-n}")
     private String topNIncidentsTopic;
 
+    @Value("${app.result.incidents.distinct.time-window.seconds}")
+    private long distinctTimeWindowSeconds;
+    @Value("${app.result.incidents.per-year.limit}")
+    private int topNIncidentsPerYearLimit;
+
     private final IncidentContainer incidentContainer = IncidentContainer.INSTANCE.getInstance();
 
     @Bean
@@ -121,12 +126,12 @@ public class StreamService extends BaseComponent {
         // Use only the last values within a time window
         KStream<IncidentGrouped, Long> groupedIncidentStream = builder.stream(groupedIncidentsTopic, Consumed.with(keySerde, Serdes.Long()))
                 .groupByKey(Grouped.with(keySerde, Serdes.Long()))
-                .windowedBy(TimeWindows.ofSizeWithNoGrace(Duration.ofSeconds(40L)))
+                .windowedBy(TimeWindows.ofSizeWithNoGrace(Duration.ofSeconds(distinctTimeWindowSeconds)))
                 .reduce((v1, v2) -> v2,
                         Materialized.<IncidentKey, Long, WindowStore<Bytes, byte[]>> as("WINDOW-STATE-STORE-" + UUID.randomUUID())
                                 .withKeySerde(keySerde)
                                 .withValueSerde(Serdes.Long())
-                ).suppress(Suppressed.untilTimeLimit(Duration.ofSeconds(40L), Suppressed.BufferConfig.unbounded())
+                ).suppress(Suppressed.untilTimeLimit(Duration.ofSeconds(distinctTimeWindowSeconds), Suppressed.BufferConfig.unbounded())
                         .withName("SUPPRESS-STATE-STORE-" + UUID.randomUUID()))
                 .toStream().map((key, value) -> KeyValue.pair(key.key(), value))
                 .map((k, v) -> KeyValue.pair(new IncidentGrouped(k.year(), k.speciesId(), k.speciesName()), v));
@@ -157,7 +162,7 @@ public class StreamService extends BaseComponent {
                             // Sort the ArrayList by amount, largest first
                             agg.sort((i1, i2) -> Long.compare(((IncidentRanked)i2).amount(), ((IncidentRanked)i1).amount()));
                             // Only return the first N items, if available
-                            int upper = Math.min(agg.size(), 5);
+                            int upper = Math.min(agg.size(), topNIncidentsPerYearLimit);
                             return new ArrayList<>(agg.subList(0, upper));
                         }, Materialized.<Integer, List<IncidentRanked>, KeyValueStore<Bytes, byte[]>> as("FINAL-STATE-STORE-" + UUID.randomUUID())
                                 .withKeySerde(Serdes.Integer())

@@ -4,6 +4,7 @@ import FowlFlightForensics.domain.IncidentKey;
 import FowlFlightForensics.util.BaseComponent;
 import com.opencsv.CSVWriter;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,9 @@ import java.util.stream.Collectors;
 
 @Service
 public class ConsumerService extends BaseComponent {
+    @Value("${app.result.incidents.per-year.limit}")
+    private int topNIncidentsPerYearLimit;
+
     private Map<IncidentKey, Long> speciesCount = new ConcurrentHashMap<>();
 
     @KafkaListener(topics = "${app.kafka.topics.grouped.incidents}", groupId = "${spring.kafka.consumer.group-id}", concurrency = "1")
@@ -29,7 +33,7 @@ public class ConsumerService extends BaseComponent {
                 consumerRecord.topic(), consumerRecord.partition(), consumerRecord.offset());
     }
 
-    @Scheduled(fixedRate = 5000)
+    @Scheduled(fixedRateString = "${app.consumer.write-to-file.fixed-rate}")
     public void writeTopNPerYearToCsv() {
         Map<Integer, Map<String, Long>> local = speciesCount.entrySet().stream()
                 .collect(Collectors.groupingBy(
@@ -46,7 +50,7 @@ public class ConsumerService extends BaseComponent {
             Map<String, Long> innerMap = entry.getValue();
             Map<String, Long> sortedInnerMap = innerMap.entrySet().stream()
                     .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
-                    .limit(5)
+                    .limit(topNIncidentsPerYearLimit)
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
             entry.setValue(sortedInnerMap);
         });
