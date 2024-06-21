@@ -1,7 +1,7 @@
 package FowlFlightForensics.util;
 
 public class Consts {
-    public static final boolean INVALID_INCIDENTS_FILTER_VIA_MAX = true;
+    public static final boolean INVALID_INCIDENTS_FILTER_VIA_MAX = false;
     public static final float INVALID_INCIDENTS_PERCENTAGE_LIMIT_MIN = 0.03f;
     public static final float INVALID_INCIDENTS_PERCENTAGE_LIMIT_MAX = 0.48f;
 

@@ -38,8 +38,8 @@ public class IncidentValidator extends BaseComponent {
         { "FaaRegion", List.of(new NotEmptyValidationRule()) },
         { "WarningIssued", List.of(new NotNullValidationRule()) },
         { "FlightPhase", List.of(new NotEmptyValidationRule()) },
-        { "SpeciesId", List.of(new ValueValidationRule("100000000000")/*, new ValueValidationRule("UNK")*/) },
-        { "SpeciesName", List.of(new NotEmptyValidationRule()/*, new ValueValidationRule("UNKNOWN")*/) },
+        { "SpeciesId", List.of(new ValueValidationRule("100000000000"), new ValueValidationRule("UNK")) },
+        { "SpeciesName", List.of(new NotEmptyValidationRule(), new ValueValidationRule("UNKNOWN")) },
         { "SpeciesQuantity", List.of(new NotEmptyValidationRule()) },
         { "Fatalities", List.of(new NotNullValidationRule()) },
         { "Injuries", List.of(new NotNullValidationRule()) }
