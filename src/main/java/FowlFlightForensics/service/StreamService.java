@@ -20,6 +20,8 @@ import org.springframework.context.annotation.Configuration;
 
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Configuration
@@ -131,7 +133,8 @@ public class StreamService extends BaseComponent {
                         Materialized.<IncidentKey, Long, WindowStore<Bytes, byte[]>> as("WINDOW-STATE-STORE-" + UUID.randomUUID())
                                 .withKeySerde(keySerde)
                                 .withValueSerde(Serdes.Long())
-                ).suppress(Suppressed.untilTimeLimit(Duration.ofSeconds(distinctTimeWindowSeconds), Suppressed.BufferConfig.unbounded())
+                )
+                .suppress(Suppressed.untilTimeLimit(Duration.ofSeconds(distinctTimeWindowSeconds), Suppressed.BufferConfig.unbounded())
                         .withName("SUPPRESS-STATE-STORE-" + UUID.randomUUID()))
                 .toStream().map((key, value) -> KeyValue.pair(key.key(), value))
                 .map((k, v) -> KeyValue.pair(new IncidentGrouped(k.year(), k.speciesId(), k.speciesName()), v));
@@ -150,7 +153,7 @@ public class StreamService extends BaseComponent {
                 .toStream()
                 .map((k, v) -> KeyValue.pair(k.year(), new IncidentRanked(0, k.year(), k.speciesId(), k.speciesName(), v)));
 
-        // Get the top N species per year that caused aircraft accidents
+        // Get the top N species per year that caused aircraft accidents, removing multiple entries per species
         aggregatedIncidentStream.groupByKey(Grouped.with(Serdes.Integer(), countSerde))
                 .aggregate(
                         // Initialize a new ArrayList
@@ -161,7 +164,9 @@ public class StreamService extends BaseComponent {
                             agg.add(v);
                             // Sort the ArrayList by amount, largest first
                             agg.sort((i1, i2) -> Long.compare(((IncidentRanked)i2).amount(), ((IncidentRanked)i1).amount()));
-                            // Only return the first N items, if available
+                            // Keep only the first entry per species
+                            agg = new ArrayList<>(agg.stream().filter(distinctByKey(IncidentRanked::speciesId)).toList());
+                            // Only return the first N entries, if available
                             int upper = Math.min(agg.size(), topNIncidentsPerYearLimit);
                             return new ArrayList<>(agg.subList(0, upper));
                         }, Materialized.<Integer, List<IncidentRanked>, KeyValueStore<Bytes, byte[]>> as("FINAL-STATE-STORE-" + UUID.randomUUID())
@@ -178,5 +183,10 @@ public class StreamService extends BaseComponent {
         finalStream.print(Printed.toSysOut());
 
         return groupedIncidentStream;
+    }
+
+    private static java.util.function.Predicate<? super Object> distinctByKey(Function<IncidentRanked, ?> keyExtractor) {
+        Set<Object> seen = ConcurrentHashMap.newKeySet();
+        return t -> seen.add(keyExtractor.apply((IncidentRanked) t));
     }
 }
