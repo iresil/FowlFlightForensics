@@ -30,4 +30,5 @@ hs_err_pid*
 replay_pid*
 
 kafka-streams
-data/output.csv
+data/output_java.csv
+data/output_kafka.csv

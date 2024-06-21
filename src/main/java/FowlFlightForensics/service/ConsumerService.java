@@ -4,15 +4,17 @@ import FowlFlightForensics.domain.IncidentGrouped;
 import FowlFlightForensics.domain.IncidentKey;
 import FowlFlightForensics.domain.IncidentRanked;
 import FowlFlightForensics.util.BaseComponent;
-import com.opencsv.CSVWriter;
+import FowlFlightForensics.util.file.CsvWriter;
+import FowlFlightForensics.util.serdes.JsonRankedSerde;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.serialization.Deserializer;
+import org.apache.kafka.common.serialization.Serdes;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.io.FileWriter;
-import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -23,19 +25,42 @@ public class ConsumerService extends BaseComponent {
     @Value("${app.result.incidents.per-year.limit}")
     private int topNIncidentsPerYearLimit;
 
-    private Map<IncidentKey, Long> speciesCount = new ConcurrentHashMap<>();
+    private Deserializer<List<IncidentRanked>> deserializer = Serdes.ListSerde(ArrayList.class, new JsonRankedSerde()).deserializer();
 
-    @KafkaListener(topics = "${app.kafka.topics.grouped.incidents}", groupId = "${spring.kafka.consumer.group-id}", concurrency = "1")
-    public void consumeMessages(ConsumerRecord<IncidentKey, Long> consumerRecord) {
-        speciesCount.put(consumerRecord.key(), consumerRecord.value());
+    private final CsvWriter csvWriter = new CsvWriter();
+
+    private Map<IncidentKey, Long> incidentsGrouped = new ConcurrentHashMap<>();
+    private Map<Integer, List<IncidentRanked>> incidentsRanked = new ConcurrentHashMap<>();
+
+    @KafkaListener(topics = "${app.kafka.topics.grouped.incidents}", groupId = "${spring.kafka.consumer.group-id}",
+            concurrency = "1", containerFactory = "groupedListenerContainerFactory")
+    public void consumeGroupedMessages(ConsumerRecord<IncidentKey, Long> consumerRecord) {
+        incidentsGrouped.put(consumerRecord.key(), consumerRecord.value());
+
+        logger.trace("Received {}:'{}' from {}@{}@{}.", consumerRecord.key(), consumerRecord.value(),
+                consumerRecord.topic(), consumerRecord.partition(), consumerRecord.offset());
+    }
+
+    @KafkaListener(topics = "${app.kafka.topics.grouped.top-n}", groupId = "${spring.kafka.consumer.group-id}",
+            concurrency = "1", containerFactory = "rankedListenerContainerFactory")
+    public void consumeRankedMessages(ConsumerRecord<Integer, byte[]> consumerRecord) {
+        List<IncidentRanked> value = deserializer.deserialize("", consumerRecord.value());
+        incidentsRanked.put(consumerRecord.key(), value);
 
         logger.trace("Received {}:'{}' from {}@{}@{}.", consumerRecord.key(), consumerRecord.value(),
                 consumerRecord.topic(), consumerRecord.partition(), consumerRecord.offset());
     }
 
     @Scheduled(fixedRateString = "${app.consumer.write-to-file.fixed-rate}")
-    public void writeTopNPerYearToCsv() {
-        Map<IncidentGrouped, Long> grouped = speciesCount.entrySet().stream()
+    public void writeTopNPerYearToCsvFiles() {
+        Map<Integer, List<IncidentRanked>> result = mapToIncidentRanked(incidentsGrouped);
+        csvWriter.writeToCsv(result, "output_java.csv");
+
+        csvWriter.writeToCsv(incidentsRanked, "output_kafka.csv");
+    }
+
+    private Map<Integer, List<IncidentRanked>> mapToIncidentRanked(Map<IncidentKey, Long> input) {
+        Map<IncidentGrouped, Long> grouped = input.entrySet().stream()
                 .collect(Collectors.groupingBy(
                         entry -> new IncidentGrouped(entry.getKey().year(), entry.getKey().speciesId(), entry.getKey().speciesName()),
                         Collectors.summingLong(Map.Entry::getValue))
@@ -44,7 +69,7 @@ public class ConsumerService extends BaseComponent {
                 .collect(Collectors.groupingBy(
                         entry -> entry.getKey().year(),
                         Collectors.mapping(entry -> new IncidentRanked(0, entry.getKey().year(),
-                                entry.getKey().speciesId(), entry.getKey().speciesName(), entry.getValue()),
+                                        entry.getKey().speciesId(), entry.getKey().speciesName(), entry.getValue()),
                                 Collectors.toList())
                 ));
         List<Map.Entry<Integer, List<IncidentRanked>>> sorted = aggregated.entrySet().stream()
@@ -59,20 +84,6 @@ public class ConsumerService extends BaseComponent {
                             i.speciesName(), i.amount())).toList();
             entry.setValue(modifiedSortedList);
         });
-        Map<Integer, List<IncidentRanked>> result = sorted.stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-
-        try (CSVWriter writer = new CSVWriter(new FileWriter("data/output.csv"))) {
-            for (Map.Entry<Integer, List<IncidentRanked>> entry : result.entrySet()) {
-                for (IncidentRanked innerEntry : entry.getValue()) {
-                    writer.writeNext(new String[]{
-                            innerEntry.index().toString(), innerEntry.year().toString(), innerEntry.speciesId(),
-                            innerEntry.speciesName(), innerEntry.amount().toString()
-                    });
-                }
-            }
-        } catch (IOException e) {
-            logger.error("Error writing results to CSV file", e);
-        }
+        return sorted.stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 }

@@ -9,6 +9,8 @@ import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.config.TopicConfig;
+import org.apache.kafka.common.serialization.ByteArrayDeserializer;
+import org.apache.kafka.common.serialization.IntegerDeserializer;
 import org.apache.kafka.common.serialization.LongDeserializer;
 import org.apache.kafka.streams.StreamsConfig;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +23,7 @@ import org.springframework.kafka.config.*;
 import org.springframework.kafka.core.*;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
@@ -99,20 +102,20 @@ public class KafkaConfig extends BaseComponent {
     @Bean
     public KafkaTemplate<Object, Object> kafkaTemplate() {
         KafkaTemplate<Object, Object> kafkaTemplate = new KafkaTemplate<>(producerFactory());
-        //		kafkaTemplate.setProducerListener(new ProducerListener<>() {
-        //			@Override
-        //			public void onSuccess(ProducerRecord<Long, Object> producerRecord, RecordMetadata recordMetadata) {
-        //				logger.trace("ACK received from broker for record with key {} and value {} at offset {}",
-        //							 producerRecord.key(), producerRecord.value(), recordMetadata.offset());
-        //			}
-        //
-        //			@Override
-        //			public void onError(ProducerRecord<Long, Object> producerRecord, RecordMetadata recordMetadata,
-        //								Exception exception) {
-        //				logger.warn("Unable to produce message for record with key {} and value {}.",
-        //							producerRecord.key(), producerRecord.value(), exception);
-        //			}
-        //		});
+        kafkaTemplate.setProducerListener(new ProducerListener<>() {
+        	//@Override
+        	//public void onSuccess(ProducerRecord<Object, Object> producerRecord, RecordMetadata recordMetadata) {
+        	//	logger.trace("ACK received from broker for record with key {} and value {} at offset {}",
+        	//				 producerRecord.key(), producerRecord.value(), recordMetadata.offset());
+        	//}
+            //
+        	//@Override
+        	//public void onError(ProducerRecord<Object, Object> producerRecord, RecordMetadata recordMetadata,
+        	//					Exception exception) {
+        	//	logger.warn("Unable to produce message for record with key {} and value {}.",
+        	//				producerRecord.key(), producerRecord.value(), exception);
+        	//}
+        });
 
         return kafkaTemplate;
     }
@@ -173,10 +176,10 @@ public class KafkaConfig extends BaseComponent {
     // endregion
 
     // region [Consumer]
-    @Bean
-    public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Object, Object>> kafkaListenerContainerFactory() {
+    @Bean("groupedListenerContainerFactory")
+    public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Object, Object>> groupedListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<Object, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(genericConsumerFactory());
+        factory.setConsumerFactory(groupedConsumerFactory());
         factory.setConcurrency(threads);
         factory.getContainerProperties().setIdleBetweenPolls(500);
         factory.getContainerProperties().setPollTimeout(5000);
@@ -187,22 +190,43 @@ public class KafkaConfig extends BaseComponent {
         return factory;
     }
 
-    private ConsumerFactory<Object, Object> genericConsumerFactory() {
-        return new DefaultKafkaConsumerFactory<>(new HashMap<>(getDefaultConsumerConfig()));
+    @Bean("rankedListenerContainerFactory")
+    public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Object, Object>> rankedListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<Object, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(rankedConsumerFactory());
+        factory.setConcurrency(threads);
+        factory.getContainerProperties().setIdleBetweenPolls(500);
+        factory.getContainerProperties().setPollTimeout(5000);
+        factory.getContainerProperties().setAckCount(10);
+        factory.getContainerProperties().setAckTime(10000);
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.COUNT_TIME);
+
+        return factory;
+    }
+
+    private ConsumerFactory<Object, Object> groupedConsumerFactory() {
+        Map<String, Object> configProperties = getDefaultConsumerConfig();
+        configProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+        configProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class);
+        configProperties.put(JsonDeserializer.KEY_DEFAULT_TYPE, "FowlFlightForensics.domain.IncidentKey");
+        return new DefaultKafkaConsumerFactory<>(new HashMap<>(configProperties));
+    }
+
+    private ConsumerFactory<Object, Object> rankedConsumerFactory() {
+        Map<String, Object> configProperties = getDefaultConsumerConfig();
+        configProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, IntegerDeserializer.class);
+        configProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
+        return new DefaultKafkaConsumerFactory<>(new HashMap<>(configProperties));
     }
 
     private Map<String, Object> getDefaultConsumerConfig() {
         Map<String, Object> configProperties = new HashMap<>();
         configProperties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         configProperties.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroupId);
-        configProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-        configProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class);
         configProperties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
         configProperties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         configProperties.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, "org.apache.kafka.clients.consumer.RoundRobinAssignor");
         configProperties.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, true);
-        configProperties.put(JsonDeserializer.KEY_DEFAULT_TYPE, "FowlFlightForensics.domain.IncidentKey");
-        configProperties.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "java.lang.Long");
 
         return configProperties;
     }
