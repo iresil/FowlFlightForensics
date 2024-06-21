@@ -1,6 +1,8 @@
 package FowlFlightForensics.service;
 
+import FowlFlightForensics.domain.IncidentGrouped;
 import FowlFlightForensics.domain.IncidentKey;
+import FowlFlightForensics.domain.IncidentRanked;
 import FowlFlightForensics.util.BaseComponent;
 import com.opencsv.CSVWriter;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -11,8 +13,6 @@ import org.springframework.stereotype.Service;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,33 +35,40 @@ public class ConsumerService extends BaseComponent {
 
     @Scheduled(fixedRateString = "${app.consumer.write-to-file.fixed-rate}")
     public void writeTopNPerYearToCsv() {
-        Map<Integer, Map<String, Long>> local = speciesCount.entrySet().stream()
+        Map<IncidentGrouped, Long> grouped = speciesCount.entrySet().stream()
+                .collect(Collectors.groupingBy(
+                        entry -> new IncidentGrouped(entry.getKey().year(), entry.getKey().speciesId(), entry.getKey().speciesName()),
+                        Collectors.summingLong(Map.Entry::getValue))
+                );
+        Map<Integer, List<IncidentRanked>> aggregated = grouped.entrySet().stream()
                 .collect(Collectors.groupingBy(
                         entry -> entry.getKey().year(),
-                        Collectors.toMap(
-                                entry -> entry.getKey().speciesName(),
-                                Map.Entry::getValue,
-                                Long::sum
-                        )
+                        Collectors.mapping(entry -> new IncidentRanked(0, entry.getKey().year(),
+                                entry.getKey().speciesId(), entry.getKey().speciesName(), entry.getValue()),
+                                Collectors.toList())
                 ));
-        List<Map.Entry<Integer, Map<String, Long>>> resultEntries = local.entrySet().stream()
+        List<Map.Entry<Integer, List<IncidentRanked>>> sorted = aggregated.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey()).toList();
-        resultEntries.forEach(entry -> {
-            Map<String, Long> innerMap = entry.getValue();
-            Map<String, Long> sortedInnerMap = innerMap.entrySet().stream()
-                    .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
-                    .limit(topNIncidentsPerYearLimit)
-                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
-            entry.setValue(sortedInnerMap);
+        sorted.forEach(entry -> {
+            List<IncidentRanked> innerList = entry.getValue();
+            List<IncidentRanked> sortedInnerList = innerList.stream()
+                    .sorted((i1, i2) -> Long.compare(i2.amount(), i1.amount()))
+                    .limit(topNIncidentsPerYearLimit).toList();
+            List<IncidentRanked> modifiedSortedList = sortedInnerList.stream().map(i ->
+                    new IncidentRanked(sortedInnerList.indexOf(i), i.year(), i.speciesId(),
+                            i.speciesName(), i.amount())).toList();
+            entry.setValue(modifiedSortedList);
         });
-        Map<Integer, Map<String, Long>> result = resultEntries.stream()
+        Map<Integer, List<IncidentRanked>> result = sorted.stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
         try (CSVWriter writer = new CSVWriter(new FileWriter("data/output.csv"))) {
-            for (Map.Entry<Integer, Map<String, Long>> entry : result.entrySet()) {
-                for (Map.Entry<String, Long> innerEntry : entry.getValue().entrySet()) {
+            for (Map.Entry<Integer, List<IncidentRanked>> entry : result.entrySet()) {
+                for (IncidentRanked innerEntry : entry.getValue()) {
                     writer.writeNext(new String[]{
-                            entry.getKey().toString(), innerEntry.getKey(), innerEntry.getValue().toString()});
+                            innerEntry.index().toString(), innerEntry.year().toString(), innerEntry.speciesId(),
+                            innerEntry.speciesName(), innerEntry.amount().toString()
+                    });
                 }
             }
         } catch (IOException e) {
