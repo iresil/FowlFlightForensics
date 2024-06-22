@@ -1,8 +1,8 @@
 package FowlFlightForensics.service;
 
-import FowlFlightForensics.domain.IncidentGrouped;
-import FowlFlightForensics.domain.IncidentKey;
-import FowlFlightForensics.domain.IncidentRanked;
+import FowlFlightForensics.domain.dto.IncidentGrouped;
+import FowlFlightForensics.domain.dto.IncidentKey;
+import FowlFlightForensics.domain.dto.IncidentRanked;
 import FowlFlightForensics.util.BaseComponent;
 import FowlFlightForensics.util.file.CsvWriter;
 import FowlFlightForensics.util.serdes.JsonRankedSerde;

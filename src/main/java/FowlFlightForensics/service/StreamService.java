@@ -1,6 +1,10 @@
 package FowlFlightForensics.service;
 
 import FowlFlightForensics.domain.*;
+import FowlFlightForensics.domain.dto.IncidentGrouped;
+import FowlFlightForensics.domain.dto.IncidentKey;
+import FowlFlightForensics.domain.dto.IncidentRanked;
+import FowlFlightForensics.domain.dto.IncidentSummary;
 import FowlFlightForensics.util.CommandUtils;
 import FowlFlightForensics.enums.InvalidIncidentTopic;
 import FowlFlightForensics.util.BaseComponent;

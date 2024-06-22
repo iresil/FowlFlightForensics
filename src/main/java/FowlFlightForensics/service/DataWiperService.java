@@ -1,6 +1,6 @@
 package FowlFlightForensics.service;
 
-import FowlFlightForensics.domain.IncidentKey;
+import FowlFlightForensics.domain.dto.IncidentKey;
 import FowlFlightForensics.util.BaseComponent;
 import FowlFlightForensics.util.serdes.JsonKeySerde;
 import org.apache.kafka.clients.admin.*;

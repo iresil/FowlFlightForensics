@@ -1,6 +1,6 @@
 package FowlFlightForensics.util.file;
 
-import FowlFlightForensics.domain.IncidentDetails;
+import FowlFlightForensics.domain.dto.IncidentDetails;
 import FowlFlightForensics.util.BaseComponent;
 import com.opencsv.CSVReader;
 import com.opencsv.bean.CsvToBean;

@@ -2,7 +2,7 @@ package FowlFlightForensics.service;
 
 import FowlFlightForensics.FowlFlightForensicsApplication;
 import FowlFlightForensics.domain.IncidentContainer;
-import FowlFlightForensics.domain.IncidentSummary;
+import FowlFlightForensics.domain.dto.IncidentSummary;
 import FowlFlightForensics.util.BaseComponent;
 import FowlFlightForensics.util.Consts;
 import jakarta.annotation.PostConstruct;

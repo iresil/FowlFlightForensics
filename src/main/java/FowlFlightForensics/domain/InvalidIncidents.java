@@ -1,5 +1,6 @@
 package FowlFlightForensics.domain;
 
+import FowlFlightForensics.domain.dto.IncidentSummary;
 import FowlFlightForensics.util.BaseComponent;
 import FowlFlightForensics.util.Consts;
 

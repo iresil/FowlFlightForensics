@@ -208,7 +208,7 @@ public class KafkaConfig extends BaseComponent {
         Map<String, Object> configProperties = getDefaultConsumerConfig();
         configProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
         configProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class);
-        configProperties.put(JsonDeserializer.KEY_DEFAULT_TYPE, "FowlFlightForensics.domain.IncidentKey");
+        configProperties.put(JsonDeserializer.KEY_DEFAULT_TYPE, "FowlFlightForensics.domain.dto.IncidentKey");
         return new DefaultKafkaConsumerFactory<>(new HashMap<>(configProperties));
     }
 

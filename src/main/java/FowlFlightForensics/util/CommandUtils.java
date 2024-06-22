@@ -1,6 +1,6 @@
 package FowlFlightForensics.util;
 
-import FowlFlightForensics.domain.IncidentRanked;
+import FowlFlightForensics.domain.dto.IncidentRanked;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;

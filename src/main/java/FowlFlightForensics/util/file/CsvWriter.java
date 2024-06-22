@@ -1,6 +1,6 @@
 package FowlFlightForensics.util.file;
 
-import FowlFlightForensics.domain.IncidentRanked;
+import FowlFlightForensics.domain.dto.IncidentRanked;
 import FowlFlightForensics.util.BaseComponent;
 import com.opencsv.CSVWriter;
 

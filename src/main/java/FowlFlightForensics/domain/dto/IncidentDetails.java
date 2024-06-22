@@ -1,4 +1,4 @@
-package FowlFlightForensics.domain;
+package FowlFlightForensics.domain.dto;
 
 import FowlFlightForensics.util.BaseComponent;
 import FowlFlightForensics.util.string.UppercaseConverter;

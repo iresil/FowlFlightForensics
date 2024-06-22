@@ -1,5 +1,7 @@
 package FowlFlightForensics.domain;
 
+import FowlFlightForensics.domain.dto.IncidentDetails;
+import FowlFlightForensics.domain.dto.IncidentSummary;
 import FowlFlightForensics.enums.InvalidIncidentTopic;
 import FowlFlightForensics.enums.MappingType;
 import FowlFlightForensics.util.incident.IncidentValidator;

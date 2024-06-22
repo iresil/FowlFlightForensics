@@ -1,8 +1,8 @@
 package FowlFlightForensics.service;
 
 import FowlFlightForensics.domain.IncidentContainer;
-import FowlFlightForensics.domain.IncidentDetails;
-import FowlFlightForensics.domain.IncidentSummary;
+import FowlFlightForensics.domain.dto.IncidentDetails;
+import FowlFlightForensics.domain.dto.IncidentSummary;
 import FowlFlightForensics.util.BaseComponent;
 import FowlFlightForensics.util.file.CsvReader;
 import FowlFlightForensics.util.incident.IncidentPreprocessor;

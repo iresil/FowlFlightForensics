@@ -1,6 +1,6 @@
 package FowlFlightForensics.util.serdes;
 
-import FowlFlightForensics.domain.IncidentGrouped;
+import FowlFlightForensics.domain.dto.IncidentGrouped;
 import org.apache.kafka.common.serialization.Serdes;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
