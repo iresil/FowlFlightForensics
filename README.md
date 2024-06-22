@@ -11,6 +11,9 @@ This is a project created using **Java 22** and **Spring Boot 3.2.5**, which aim
 a Kafka cluster and produce an output CSV. The input CSV file contains detailed information about aircraft accidents caused
 by various wildlife species, including the type of damage that was caused and the number of creatures that caused the incident.
 
+### Topology
+![Topology](diagrams/FowlFlightForensics.drawio.png "Topology")
+
 ### Data Preparation
 The original dataset contained a lot of invalid data which had to be cleaned up in order for any sort of calculations to be
 possible. Since most of that information couldn't be deduced (and performing imputations wasn't part of the objective),
