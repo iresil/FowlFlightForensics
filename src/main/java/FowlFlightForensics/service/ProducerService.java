@@ -37,7 +37,7 @@ public class ProducerService extends BaseComponent {
         incidentSummaryList = incidentContainer.getIncidentSummaryList();
     }
 
-    @Scheduled(cron = "${app.producer.send-message.cron}")
+    @Scheduled(fixedRateString = "${app.producer.send-message.fixed-rate}")
     public void produceMessages() {
         Iterator<IncidentSummary> iterator = incidentSummaryList.iterator();
         List<IncidentSummary> itemsToSend = new ArrayList<>();
