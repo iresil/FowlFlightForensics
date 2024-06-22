@@ -1,4 +1,4 @@
-package FowlFlightForensics.service;
+package FowlFlightForensics.service.kafka;
 
 import FowlFlightForensics.domain.dto.IncidentKey;
 import FowlFlightForensics.domain.dto.IncidentRanked;

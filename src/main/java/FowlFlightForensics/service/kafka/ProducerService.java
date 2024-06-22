@@ -1,4 +1,4 @@
-package FowlFlightForensics.service;
+package FowlFlightForensics.service.kafka;
 
 import FowlFlightForensics.FowlFlightForensicsApplication;
 import FowlFlightForensics.domain.IncidentContainer;

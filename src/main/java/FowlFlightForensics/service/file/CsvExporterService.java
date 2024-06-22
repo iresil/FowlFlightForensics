@@ -1,8 +1,9 @@
-package FowlFlightForensics.service;
+package FowlFlightForensics.service.file;
 
 import FowlFlightForensics.domain.dto.IncidentGrouped;
 import FowlFlightForensics.domain.dto.IncidentKey;
 import FowlFlightForensics.domain.dto.IncidentRanked;
+import FowlFlightForensics.service.kafka.ConsumerService;
 import FowlFlightForensics.util.file.CsvWriter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
