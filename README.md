@@ -48,9 +48,15 @@ In general, what happens to the data during each execution is pretty straightfor
      caused aircraft accidents per **year**, **month** and **species**. The results of this calculation are sent to `grouped-creatures-topic`.
    - By calculating the total number of _incidents_, which describes how many incidents each **species** caused per **year** and
      **month** combination. The results of this calculation are sent to `grouped-incidents-topic`.
-9. Grouped incidents are then received by a separate Kafka **Consumer**, and the **top N species** that caused the most incidents
-   per **year** and **month** are selected (where **N** is a configurable number).
-10. The results are exported to a CSV file.
+9. **Grouped incidents** are then received by:
+   - A separate Kafka **Consumer**, which calculates the **top N species** that caused the most incidents within a single
+     **year** (where **N** is a configurable number). The results of this process are exported to `data/output_java.csv`.
+   - Another **KStream** which calculates the **top N species** that caused the most incidents within a single year (where
+     N is a configurable number), utilizing windowed aggregations. The results of this process are sent to `top-n-incidents-topic`. 
+10. A Kafka **Consumer** reads messages from `top-n-incidents-topic` and directly exports them to `data/output_kafka.csv`,
+    without performing any further calculations.
+
+The two output CSV files both have the same structure, so they are directly comparable.
 
 ### Caveats
 To make the application's execution easier, certain choices were made that don't align with Kafka best practices. These choices
