@@ -3,6 +3,7 @@ package FowlFlightForensics.util.incident;
 import FowlFlightForensics.domain.IncidentSummary;
 import FowlFlightForensics.enums.MappingType;
 import FowlFlightForensics.util.BaseComponent;
+import FowlFlightForensics.util.CommandUtils;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -100,15 +101,10 @@ public class IncidentPreprocessor extends BaseComponent {
         return itemIsId;
     }
 
-    @FunctionalInterface
-    interface SettingFunction<T, K, V> {
-        void set(T target, K index, V value);
-    }
-
     @SuppressWarnings("unchecked")
     private <T, K, V> void replaceIncidentInList(MappingType type, Boolean isIdToNameMap, Map<String, Set<String>> multiCodeCorrelation,
                                                  Map<String, String> mapping, T incidentSummaryList, K i, V incidentSummary,
-                                                 SettingFunction<T, K, V> func) {
+                                                 CommandUtils.SettingFunction<T, K, V> func) {
         for (String k : multiCodeCorrelation.keySet()) {
             String largestCode = "";
             boolean alreadyReplaced = false;

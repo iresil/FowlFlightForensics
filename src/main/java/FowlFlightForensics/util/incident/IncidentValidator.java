@@ -6,6 +6,7 @@ import FowlFlightForensics.domain.InvalidIncidents;
 import FowlFlightForensics.enums.InvalidIncidentTopic;
 import FowlFlightForensics.enums.MappingType;
 import FowlFlightForensics.util.BaseComponent;
+import FowlFlightForensics.util.CommandUtils;
 import FowlFlightForensics.util.incident.rules.*;
 import FowlFlightForensics.util.string.CaseTransformer;
 import lombok.Getter;
@@ -171,25 +172,15 @@ public class IncidentValidator extends BaseComponent {
     // endregion
 
     // region [Value Validators]
-    @FunctionalInterface
-    interface AddingFunction<T, R> {
-        void add(T target, R value);
-    }
-
-    @FunctionalInterface
-    interface PuttingFunction<T, K, V> {
-        void put(T target, K key, V value);
-    }
-
     private <T, R> void validateAndAddField(Object value, ValidationRule<Object> rule, T obj, R summary,
-                                            AddingFunction<T, R> func) {
+                                            CommandUtils.AddingFunction<T, R> func) {
         if (rule != null && !rule.isValid(value)) {
             func.add(obj, summary);
         }
     }
 
     private <T, K, V> void validateAndPutField(Object value, ValidationRule<Object> rule, T obj, K key, V summary,
-                                               PuttingFunction<T, K, V> func) {
+                                               CommandUtils.PuttingFunction<T, K, V> func) {
         if (rule != null && !rule.isValid(value)) {
             func.put(obj, key, summary);
         }

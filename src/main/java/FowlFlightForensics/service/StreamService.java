@@ -1,6 +1,7 @@
 package FowlFlightForensics.service;
 
 import FowlFlightForensics.domain.*;
+import FowlFlightForensics.util.CommandUtils;
 import FowlFlightForensics.enums.InvalidIncidentTopic;
 import FowlFlightForensics.util.BaseComponent;
 import FowlFlightForensics.util.serdes.JsonKeySerde;
@@ -20,8 +21,6 @@ import org.springframework.context.annotation.Configuration;
 
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Configuration
@@ -165,7 +164,7 @@ public class StreamService extends BaseComponent {
                             // Sort the ArrayList by amount, largest first
                             agg.sort((i1, i2) -> Long.compare(((IncidentRanked)i2).amount(), ((IncidentRanked)i1).amount()));
                             // Keep only the first entry per species
-                            agg = new ArrayList<>(agg.stream().filter(distinctByKey(IncidentRanked::speciesId)).toList());
+                            agg = new ArrayList<>(agg.stream().filter(CommandUtils.distinctByKey(IncidentRanked::speciesId)).toList());
                             // Only return the first N entries, if available
                             int upper = Math.min(agg.size(), topNIncidentsPerYearLimit);
                             return new ArrayList<>(agg.subList(0, upper));
@@ -183,10 +182,5 @@ public class StreamService extends BaseComponent {
         finalStream.print(Printed.toSysOut());
 
         return groupedIncidentStream;
-    }
-
-    private static java.util.function.Predicate<? super Object> distinctByKey(Function<IncidentRanked, ?> keyExtractor) {
-        Set<Object> seen = ConcurrentHashMap.newKeySet();
-        return t -> seen.add(keyExtractor.apply((IncidentRanked) t));
     }
 }
