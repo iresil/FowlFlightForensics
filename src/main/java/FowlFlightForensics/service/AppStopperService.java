@@ -14,11 +14,15 @@ public class AppStopperService extends BaseComponent {
 
     @Scheduled(fixedRateString = "${app.stopper.exit.fixed-rate}")
     public void stopApplication() {
-        long currentTimeInMillis = System.currentTimeMillis();
-        if (FowlFlightForensicsApplication.lastMessageTimeInMillis != Consts.LAST_MESSAGE_TIME_MILLIS_DEFAULT_VALUE
-                && currentTimeInMillis - FowlFlightForensicsApplication.lastMessageTimeInMillis > millisecondsToTick) {
+        if (isAppStopNecessary()) {
             logger.info("Stopping application ...");
             System.exit(0);
         }
+    }
+
+    public boolean isAppStopNecessary() {
+        long currentTimeInMillis = System.currentTimeMillis();
+        return FowlFlightForensicsApplication.lastMessageTimeInMillis != Consts.LAST_MESSAGE_TIME_MILLIS_DEFAULT_VALUE
+                && currentTimeInMillis - FowlFlightForensicsApplication.lastMessageTimeInMillis > millisecondsToTick;
     }
 }
