@@ -77,6 +77,11 @@ production-level code. Some examples of this are the following:
   stream of information being processed.
 - The application exits after the input dataset gets successfully processed. In an actual streaming application we wouldn't
   want this to happen, since we wouldn't know if and how soon the next set of data points would arrive.
+- The CSV that is directly exported from `top-n-incidents-topic` usually doesn't contain the last year of data, and the
+  data of the year before that may also be incomplete. That is because the application runs once and stops, so the last
+  batches of data are never flushed from the corresponding state stores. Window sizes have been selected in such a way that
+  this effect is minimized while simultaneously ensuring maximum accuracy for the completed calculations. In a production
+  environment this wouldn't happen because we would expect to have a continuous stream of information.
 
 ## Environment Setup
 ### Requirements
