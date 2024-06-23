@@ -9,6 +9,10 @@ import lombok.Setter;
 
 import java.lang.reflect.Field;
 
+/**
+ * An {@code IncidentDetails} object contains one row of information parsed by the input CSV file, it its raw format.
+ * All the available fields have been assigned a specific type, based on what sort of values the CSV file contained.
+ */
 @Getter
 @Setter
 public class IncidentDetails extends BaseComponent {
@@ -210,6 +214,12 @@ public class IncidentDetails extends BaseComponent {
     @CsvBindByName(column = "Other Damage")
     private Boolean otherDamage;
 
+    /**
+     * Utilizes reflection to retrieve a field's value, provided that the field's name matches the {@code fieldName}
+     * parameter.
+     * @param fieldName The name of the field whose value we need to retrieve.
+     * @return A generic {@code Object} containing the field's value, regardless of its original type.
+     */
     public Object getFieldValueByName(String fieldName) {
         Object result = new Object();
         try {

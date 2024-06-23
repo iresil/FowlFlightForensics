@@ -13,6 +13,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * The {@code CsvExporterService} periodically triggers the export to file process and applies some transformations, to
+ * ensure that both output CSV files are generated with the same structure.
+ */
 @Service
 public class CsvExporterService {
     @Value("${app.result.incidents.per-year.limit}")
@@ -20,6 +24,10 @@ public class CsvExporterService {
 
     private final CsvWriter csvWriter = new CsvWriter();
 
+    /**
+     * Periodically reads the {@code Map}s stored by the {@code Consumer}, applies transformations where necessary, and
+     * stores their contents in the output CSV files.
+     */
     @Scheduled(fixedRateString = "${app.consumer.write-to-file.fixed-rate}")
     public void writeTopNPerYearToCsvFiles() {
         Map<Integer, List<IncidentRanked>> result = mapToIncidentRanked(ConsumerService.incidentsGrouped);
@@ -29,11 +37,14 @@ public class CsvExporterService {
     }
 
     private Map<Integer, List<IncidentRanked>> mapToIncidentRanked(Map<IncidentKey, Long> input) {
+        // Group the input data per year and species
         Map<IncidentGrouped, Long> grouped = input.entrySet().stream()
                 .collect(Collectors.groupingBy(
                         entry -> new IncidentGrouped(entry.getKey().year(), entry.getKey().speciesId(), entry.getKey().speciesName()),
                         Collectors.summingLong(Map.Entry::getValue))
                 );
+
+        // Create a list of incidents per year
         Map<Integer, List<IncidentRanked>> aggregated = grouped.entrySet().stream()
                 .collect(Collectors.groupingBy(
                         entry -> entry.getKey().year(),
@@ -41,8 +52,12 @@ public class CsvExporterService {
                                         entry.getKey().speciesId(), entry.getKey().speciesName(), entry.getValue()),
                                 Collectors.toList())
                 ));
+
+        // Sort the map by year, ascending
         List<Map.Entry<Integer, List<IncidentRanked>>> sorted = aggregated.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey()).toList();
+
+        // Sort the value of each year's entry by count of incidents, descending, and only keep the top N items
         sorted.forEach(entry -> {
             List<IncidentRanked> innerList = entry.getValue();
             List<IncidentRanked> sortedInnerList = innerList.stream()
@@ -53,6 +68,7 @@ public class CsvExporterService {
                             i.speciesName(), i.amount())).toList();
             entry.setValue(modifiedSortedList);
         });
+
         return sorted.stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 }

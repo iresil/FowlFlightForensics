@@ -22,6 +22,10 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
 
+/**
+ * The {@code IncidentValidator} class validates and transforms raw incidents (either of type {@code IncidentDetails} or
+ * {@code IncidentSummary}). It is utilized by both the Java code and the {@code KStreams} implementation.
+ */
 @Component
 @Getter
 @Setter
@@ -50,16 +54,55 @@ public class IncidentValidator extends BaseComponent {
         { "SpeciesQuantityMax", List.of(new NotNullValidationRule()) },
     }).collect(toMap(data -> (String) data[0], data -> (List<ValidationRule<Object>>) data[1]));
 
+    /**
+     * A {@code List} of raw incidents that have been converted to the {@code IncidentSummary} type.
+     */
     public List<IncidentSummary> incidentSummaryList = new ArrayList<>();
+    /**
+     * A {@code Map} containing all invalid incidents per validation rule, with the purpose of counting the
+     * total number of invalid incidents per rule and deciding on the final validations to apply in {@code KStreams}
+     * based on that (the {@code Map} is filtered based on whether we've set the validations in strict mode or not).
+     */
     public Map<String, Set<IncidentSummary>> invalidIncidentsTrimmedMap = new HashMap<>();
+    /**
+     * The mapping between airport ids and airport names.
+     */
     public Map<String, String> airports = new HashMap<>();
+    /**
+     * The mapping between species ids and species names.
+     */
     public Map<String, String> species = new HashMap<>();
+    /**
+     * All possible species ids that correspond to unknown species.
+     */
     public List<String> unknownSpeciesIds = new ArrayList<>();
+    /**
+     * All possible species names that correspond to unknown species.
+     */
     public List<String> unknownSpeciesNames = new ArrayList<>();
+    /**
+     * Airport and species mappings, for which either one single id corresponds to multiple names, or vice-versa.
+     */
     public Map<MappingType, Map<String, Set<String>>> multiCodeCorrelations = new EnumMap<>(MappingType.class);
 
     private InvalidIncidents invalidIncidents = new InvalidIncidents();
 
+    /**
+     * Applies all configured validations to a {@code List} of {@code IncidentDetails} objects and then does the following:
+     * <ul>
+     *   <li>transforms the input to a {@code List} of {@code IncidentSummary} objects
+     *   <li>adds {@code IncidentSummary} objects that have been identified as invalid to the corresponding field of an
+     *   {@code InvalidIncidents} object
+     *   <li>creates a {@code Map} containing all invalid incidents per validation rule, with the purpose of counting the
+     *   total number of invalid incidents per rule and deciding on the final validations to apply in {@code KStreams}
+     *   based on that (the {@code Map} is filtered based on whether we've set the validations in strict mode or not)
+     *   <li>creates a slightly modified version of the validation rules, to be applied to {@code IncidentSummary} objects
+     *   <li>generates two separate {@code Map}s (one per species and one per airport), which under normal circumstances would be
+     *   separate tables in a database, but in this case they were included as flat values in the input CSV
+     *   <li>identifies unknown species ids and names (to be used for debugging)
+     * </ul>
+     * @param incidentDetails The raw {@code List} of {@code IncidentDetails} objects, that will undergo transformations.
+     */
     public void validateAndTransformIncidents(List<IncidentDetails> incidentDetails) {
         incidentSummaryList = validateAndGenerateSummary(incidentDetails);
         invalidIncidentsTrimmedMap = invalidIncidents.toTrimmedMap(incidentSummaryList.size());
@@ -73,6 +116,13 @@ public class IncidentValidator extends BaseComponent {
         unknownSpeciesNames = species.values().stream().filter(i -> i.contains("UNKNOWN")).toList();
     }
 
+    /**
+     * This is the method that gets called from within {@code KStreams}, to validate transferred objects. It returns a
+     * {@code Set} of topics, denoting to which topic each object should be sent, based on the validations that failed.
+     * @param summary The {@code IncidentSummary} object to be validated.
+     * @return The invalid data topics to which the input object should be sent. If the input object is considered valid,
+     * then the returned {@code Set} will be empty.
+     */
     public Set<InvalidIncidentTopic> validateIncidentSummary(IncidentSummary summary) {
         logger.trace("Applying summary validation rules - {}", summary.toString());
         Map<String, IncidentSummary> resultMap = new HashMap<>();

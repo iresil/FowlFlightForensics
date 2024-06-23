@@ -14,6 +14,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.zip.GZIPInputStream;
 
+/**
+ * The {@code CsvReader} class is responsible for reading a zipped CSV file and converting it to a {@code List} of objects.
+ */
 @Component
 public class CsvReader extends BaseComponent {
     @Deprecated
@@ -35,6 +38,10 @@ public class CsvReader extends BaseComponent {
         return records;
     }
 
+    /**
+     * Unzips the specified file and transforms each line to an {@code IncidentDetails} object.
+     * @return A {@code List} containing the parsed {@code IncidentDetails} objects.
+     */
     public List<IncidentDetails> zippedCsvToListOfObjects() {
         List<IncidentDetails> records = new ArrayList<>();
         try (GZIPInputStream gZIPInputStream = new GZIPInputStream(new FileInputStream("data/dataset.gz"));) {

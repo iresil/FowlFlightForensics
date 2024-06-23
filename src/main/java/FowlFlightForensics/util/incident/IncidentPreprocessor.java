@@ -10,8 +10,25 @@ import java.util.*;
 
 import static java.util.Map.*;
 
+/**
+ * The {@code IncidentPreprocessor} class is used for applying minor transformations to the raw {@code IncidentSummary}
+ * objects. These transformations concern airport and species mappings, for which either one single id corresponds to
+ * multiple names, or vice-versa. The idea is to ensure that at least id-to-name mappings will be valid once the data is
+ * sent to Kafka.
+ */
 @Component
 public class IncidentPreprocessor extends BaseComponent {
+    /**
+     * Fixes any airport and species mappings found in {@code incidentSummaryList}, for which either one single id corresponds
+     * to multiple names, or vice-versa.
+     * @param incidentSummaryList The raw {@code List} of {@code IncidentSummary} objects, on which transformations will
+     *                            be applied.
+     * @param airports The correct mapping between airport ids and airport names.
+     * @param species The correct mapping between species ids and species names.
+     * @param multiCodeCorrelations Airport and species mappings, for which either one single id corresponds to multiple
+     *                              names, or vice-versa.
+     * @return A modified {@code incidentSummaryList}, in which id-to-name mappings have been fixed.
+     */
     public List<IncidentSummary> applyTransformations(List<IncidentSummary> incidentSummaryList, Map<String, String> airports,
                                                       Map<String, String> species, Map<MappingType, Map<String, Set<String>>> multiCodeCorrelations) {
         for (Entry<MappingType, Map<String, Set<String>>> set : multiCodeCorrelations.entrySet()) {

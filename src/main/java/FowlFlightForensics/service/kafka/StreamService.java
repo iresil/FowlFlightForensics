@@ -27,6 +27,9 @@ import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * The {@code StreamService} defines all calculations that are going to be applied within {@code KStreams}.
+ */
 @Configuration
 public class StreamService extends BaseComponent {
     @Value("${app.kafka.topics.raw}")
@@ -47,6 +50,11 @@ public class StreamService extends BaseComponent {
 
     private final IncidentContainer incidentContainer = IncidentContainer.INSTANCE.getInstance();
 
+    /**
+     * Filters out invalid data and forwards the remaining messages to the clean data topic.
+     * @param builder Provides the high-level Kafka Streams Domain-Specific Language to create {@code KStreams}.
+     * @return The topology of the stream.
+     */
     @Bean
     public KStream<IncidentKey, IncidentSummary> streamFilter(StreamsBuilder builder) {
         JsonKeySerde keySerde = new JsonKeySerde();
@@ -93,11 +101,17 @@ public class StreamService extends BaseComponent {
         return rawIncidentStream;
     }
 
+    /**
+     * Groups messages per key and applies basic aggregations.
+     * @param builder Provides the high-level Kafka Streams Domain-Specific Language to create {@code KStreams}.
+     * @return The topology of the stream.
+     */
     @Bean
     public KStream<IncidentKey, IncidentSummary> streamGroup(StreamsBuilder builder) {
         JsonKeySerde keySerde = new JsonKeySerde();
         JsonValueSerde incidentSerde = new JsonValueSerde();
 
+        // Sums all creature counts per incident key
         KStream<IncidentKey, IncidentSummary> cleanIncidentStream = builder.stream(cleanDataTopic, Consumed.with(keySerde, incidentSerde));
         cleanIncidentStream.mapValues(v -> (long)((v.getSpeciesQuantityMin() + v.getSpeciesQuantityMax()) / 2))
                 .groupByKey(Grouped.with(keySerde, Serdes.Long()))
@@ -108,6 +122,8 @@ public class StreamService extends BaseComponent {
                 )
                 .toStream()
                 .to(groupedCreaturesTopic);
+
+        // Counts all incidents per key
         cleanIncidentStream.groupByKey(Grouped.with(keySerde, incidentSerde))
                 .count(Materialized.<IncidentKey, Long, KeyValueStore<Bytes, byte[]>> as("COUNT-STATE-STORE-" + UUID.randomUUID())
                                 .withKeySerde(keySerde)
@@ -122,6 +138,11 @@ public class StreamService extends BaseComponent {
         return cleanIncidentStream;
     }
 
+    /**
+     * Applies more complex aggregations, to retrieve the top N species that caused aircraft damage within a single year.
+     * @param builder Provides the high-level Kafka Streams Domain-Specific Language to create {@code KStreams}.
+     * @return The topology of the stream.
+     */
     @Bean
     public KStream<IncidentGrouped, Long> getTopEntries(StreamsBuilder builder) {
         JsonKeySerde keySerde = new JsonKeySerde();

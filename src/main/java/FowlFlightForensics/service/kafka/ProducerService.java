@@ -22,6 +22,9 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.LongStream;
 
+/**
+ * The {@code ProducerService} periodically sends data to {@code Kafka}.
+ */
 @Service
 @RequiredArgsConstructor
 public class ProducerService extends BaseComponent {
@@ -37,6 +40,11 @@ public class ProducerService extends BaseComponent {
         incidentSummaryList = incidentContainer.getIncidentSummaryList();
     }
 
+    /**
+     * Periodically sends messages to {@code Kafka}. Each iteration handles a batch of messages, its max size defined in
+     * {@code NUM_OF_MESSAGES_PER_BATCH}. If no more messages are available for sending, the timestamp of the last message
+     * is updated, to be used for determining whether to stop the application and when.
+     */
     @Scheduled(fixedRateString = "${app.producer.send-message.fixed-rate}")
     public void produceMessages() {
         Iterator<IncidentSummary> iterator = incidentSummaryList.iterator();
@@ -62,7 +70,7 @@ public class ProducerService extends BaseComponent {
         }
     }
 
-    public void sendMessageWithKeyRecord(final String topic, final Object key, final Object value) {
+    private void sendMessageWithKeyRecord(final String topic, final Object key, final Object value) {
         CompletableFuture<SendResult<Object, Object>> future = kafkaTemplate.send(generateProducerRecord(topic, key, value));
 
         future.whenComplete((result, ex) -> {

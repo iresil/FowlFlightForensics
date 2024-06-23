@@ -23,6 +23,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
+/**
+ * The {@code DataWiperService} is called during application startup, to ensure that all calculations will start from a
+ * clean slate, without taking into account data from previous runs.
+ */
 @Service
 public class DataWiperService extends BaseComponent {
     @Autowired
@@ -34,6 +38,9 @@ public class DataWiperService extends BaseComponent {
     @Autowired
     StreamsBuilder builder;
 
+    /**
+     * Deletes the local state store and cleans the contents of all topics.
+     */
     public void delete() {
         deleteLocalStateStore();
 
