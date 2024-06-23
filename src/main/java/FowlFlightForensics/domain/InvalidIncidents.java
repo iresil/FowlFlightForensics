@@ -9,7 +9,7 @@ import java.util.*;
 
 public class InvalidIncidents extends BaseComponent {
     private final float MISSING_THRESHOLD =
-            Consts.INVALID_INCIDENTS_FILTER_VIA_MAX ? Consts.INVALID_INCIDENTS_PERCENTAGE_LIMIT_MAX : Consts.INVALID_INCIDENTS_PERCENTAGE_LIMIT_MIN;
+            Consts.INVALID_INCIDENTS_FILTER_STRICT ? Consts.INVALID_INCIDENTS_PERCENTAGE_LIMIT_MAX : Consts.INVALID_INCIDENTS_PERCENTAGE_LIMIT_MIN;
 
     public List<IncidentSummary> invalidYear = new ArrayList<>();
     public List<IncidentSummary> invalidMonth = new ArrayList<>();
