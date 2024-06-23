@@ -31,6 +31,7 @@ the following steps were taken:
    (to ensure that the end results will eventually make sense). The rest of the metrics will simply be ignored.
 
 ### Data Pipeline
+![Pipeline](diagrams/Pipeline.drawio.png "Pipeline")
 In general, what happens to the data during each execution is pretty straightforward:
 1. The CSV file gets loaded and parsed into a List of `IncidentDetails` objects.
 2. The objects are validated based on a predefined set of rules and the total percentage of invalid objects is calculated
@@ -67,21 +68,39 @@ production-level code. Some examples of this are the following:
   - The local state store (the folder of which has been conveniently moved under the project's root directory) gets deleted
     on application start up, by `DataWiperService`.
   - All connected topics and partitions are completely emptied of messages (on application start up, by `DataWiperService`).
-  - Each time aggregations are performed and the state store is necessary, a new store name is generated using a UUID, so
-    that aggregations from previous runs aren't taken into account. This was done because there were permissions issues
-    when attempting to delete data from the state store.
+  - Each time aggregations are performed and using the state store is necessary, a new store name is generated using a UUID,
+    so that aggregations from previous runs aren't taken into account. Even though this is obviously not a good practice,
+    it was done because there were permissions issues when attempting to delete data from the state store.
 - The entire pipeline is packaged in one single application. In a production environment, this code would probably be built
-  as a set of microservices, so that the appropriate resources can be dedicated to each part of the stream.
-- The stream to process gets created from a CSV file and the output gets written to a CSV file. Both files always have the
-  same contents. This doesn't make much sense from a Kafka perspective, since in a real-case scenario we would have a steady
-  stream of information being processed.
+  as a set of microservices, so that the appropriate resources can be dedicated to each part of the stream. In this case,
+  the goal was for anyone attempting to run the application to only need to run it once without being concerned with whether
+  there should be multiple run configurations and in which order each service should be called.
+- The stream to process gets created from a CSV file and the output gets written in two CSV files. Both files are expected
+  to have the same contents after the program's execution. This doesn't make much sense from a Kafka perspective, since in
+  a real-world scenario we would have a steady stream of information being processed, and thus there would be no "eventual
+  state" to check for in the output files (either both files would be continuously changing, or there would be no files at
+  all and the data would be presented in a UI via something like WebSockets).
 - The application exits after the input dataset gets successfully processed. In an actual streaming application we wouldn't
   want this to happen, since we wouldn't know if and how soon the next set of data points would arrive.
 - The CSV that is directly exported from `top-n-incidents-topic` usually doesn't contain the last year of data, and the
-  data of the year before that may also be incomplete. That is because the application runs once and stops, so the last
-  batches of data are never flushed from the corresponding state stores. Window sizes have been selected in such a way that
-  this effect is minimized while simultaneously ensuring maximum accuracy for the completed calculations. In a production
-  environment this wouldn't happen because we would expect to have a continuous stream of information.
+  data of the year before that may also be incomplete. That is because the application is built to run once and stop, so
+  the last batches of data are never flushed from the window state store. Window size has been selected in such a way that
+  this effect is minimized while simultaneously ensuring maximum accuracy for the completed calculations. In general, smaller
+  windows resulted to more data being processed until the execution stops, but there was the chance that some messages might
+  be added twice to the total, since by only grouping the messages per year and species there was no easy way to figure out
+  which month each incident count originated from, unless the transferred objects were made more complicated. This wasn't
+  attempted because it would defeat the purpose of trying to perform these aggregations using "the Kafka way". In a production
+  environment, assuming the window size was also correctly selected, the discrepancy in the calculated data wouldn't be
+  noticeable, because a steady stream of information would be available, and thus eventual consistency would be guaranteed.
+  There was a way to _kind of_ bypass this issue, by not using a UUID in the `SUPPRESS-STATE-STORE`, because this would
+  result to the correct data being displayed after the second execution (since we always have the same input and thus the
+  same output, so any leftovers from the previous execution would be used after the program started again). This was considered
+  "cheating", so I didn't choose to implement this logic.
+- The comparison between the two output CSVs might result in other minor discrepancies at times (e.g. two species appearing
+  in a different order between the CSVs or the last species within a year being different). This is because some species
+  may share the same count of incidents within the same year. There was obviously the option of sorting the values within
+  a year using both count and species, but this was considered minor enough since the correctness of the results had already
+  been validated, and thus it has been left as is.
 
 ## Environment Setup
 ### Requirements
