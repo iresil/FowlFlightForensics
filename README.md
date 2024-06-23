@@ -94,8 +94,8 @@ production-level code. Some examples of this are the following:
   noticeable, because a steady stream of information would be available, and thus eventual consistency would be guaranteed.
   There was a way to _kind of_ bypass this issue, by not using a UUID in the `SUPPRESS-STATE-STORE`, because this would
   result to the correct data being displayed after the second execution (since we always have the same input and thus the
-  same output, so any leftovers from the previous execution would be used after the program started again). This was considered
-  "cheating", so I didn't choose to implement this logic.
+  same output, so any leftovers from the previous execution would be used after the program started again). This could be
+  considered "cheating", so I didn't choose to implement this logic.
 - The comparison between the two output CSVs might result in other minor discrepancies at times (e.g. two species appearing
   in a different order between the CSVs or the last species within a year being different). This is because some species
   may share the same count of incidents within the same year. There was obviously the option of sorting the values within
@@ -135,25 +135,100 @@ To do this, you can execute the following commands in the WSL terminal:
   wget https://archive.apache.org/dist/kafka/3.7.0/kafka_2.13-3.7.0.tgz
   tar -xvzf kafka_2.13-3.7.0.tgz
   ```
-- To use the shell scripts included in the Kafka installation (e.g. to list available cluster members, list all topics,
-  start a consumer on a specific topic, or delete one or more topics):
+- To use the shell scripts included in the Kafka installation:
+  
+  **List available cluster members**
   ```bash
   cd kafka_2.13-3.7.0/bin
   ./kafka-broker-api-versions.sh --bootstrap-server localhost:19092 | awk '/id/{print $1}' | sort
   ```
+  **List all topics**
   ```bash
   cd kafka_2.13-3.7.0/bin
   ./kafka-topics.sh --list --bootstrap-server localhost:19092, localhost:29092
   ```
+  **Start a consumer on a specific topic**
   ```bash
   cd kafka_2.13-3.7.0/bin
   ./kafka-console-consumer.sh --bootstrap-server localhost:19092, localhost:29092 --topic raw-data-topic --from-beginning
   ```
+  **Delete a topic**
   ```bash
   cd kafka_2.13-3.7.0/bin
   ./kafka-topics.sh --bootstrap-server localhost:19092 --topic raw-data-topic --delete
   ```
+  **Delete multiple topics**
   ```bash
   cd kafka_2.13-3.7.0/bin
   ./kafka-topics.sh --bootstrap-server localhost:19092, localhost:29092 --delete --topic 'kafka-stream-.*'
   ```
+
+### Configuration
+You can run the application using multiple configurations, and it will yield different results per case. By modifying the
+following values, you can draw your own conclusions based on the results:
+- `FowlFlightForensics.util.Consts`
+  - `INVALID_INCIDENTS_FILTER_STRICT`
+  
+    This changes the strictness of the data validations applied when running the application. There is a strict option, as
+    well as a more lenient one, which are defined by the percentage of entries that will end up in the _invalid_ topics if
+    each set of validations is applied. The main difference between the two, as far as the end result is concerned, is that
+    the strict ruleset will completely remove entries that refer to unknown species, while the more lenient one won't. The
+    default value for this setting is `true`.
+- `application.properties`
+  - `app.result.incidents.per-year.limit`
+    
+    How many of the top species will be returned per year in the CSV export. The default value for this setting is `5`.
+  - `app.result.incidents.distinct.time-window.seconds`
+    
+    How long the grouped incidents will be suppressed, in order to avoid receiving all counts per group and use only the
+    last value within that specific timeframe. Larger windows result to more accuracy but fewer data available after execution.
+    Smaller windows result to the opposite. Values between `8` and `40` have been tested and based on that, a default value
+    of `12` was selected.
+  - `app.producer.send-message.fixed-rate`
+    
+    How fast the Producer sends messages to the `raw-data-topic`. This can also have an effect on how much data is exported
+    to the CSV file until the end of the execution, although not as much as the time window above. Values between `400` and
+    `1000` milliseconds have been tested, and the best results seemed to come from setting its default value to `500`.
+
+The configurations mentioned above cannot be considered standalone. In fact, they have been observed to affect and be affected
+by each other. The current default values have been selected with the assumption that the strict validation rules will be
+used. If you want to change the validation rules to utilize the **non-strict** option, you'll probably have to do something
+like the following, to achieve the best results:
+```java
+public static final boolean INVALID_INCIDENTS_FILTER_STRICT = false;
+```
+```properties
+app.result.incidents.distinct.time-window.seconds=25
+app.producer.send-message.fixed-rate=800
+```
+
+## Key Takeaways
+This was a fun exercise, from which I learned a lot. Some conclusions that can be drawn from its creation are the following:
+- Regarding **Kafka**:
+  - It is true that a different mindset is needed if you want to utilize Kafka for calculations like the ones mentioned here.
+    It is also true that once you realize what the differences are and what tools there are in your toolbox, the underlying
+    logic will still be the same. This can become more easily apparent if one compares the **algorithm** (and not the code)
+    that is used for the **top N** calculation using either Java code or KStreams (the steps taken are basically the same).
+  - Performing stateful operations using KStreams can feel "too fiddly", mostly due to the way you are expected to configure
+    the stream. In some cases it might be a better idea to utilize something like Apache Flink, especially if you want to
+    have custom windowing criteria.
+  - Creating a traditional application (i.e. with a specific start and end) that also happens to utilize Kafka will require
+    much more effort than expected, and you may run into unforeseen issues. It still is a good exercise if you want to learn
+    more about Kafka, though (it might actually be a better exercise than creating an application that fits better into the
+    Kafka use case, because you get to see more edge case scenarios and figure out creative ways to bypass them).
+  - If you are using different Key/Value combinations per topic, and you're consuming them from multiple KStreams (instead
+    of simply modifying the objects within branches of the original KStream), make sure to declare the exact Serdes to be
+    used within each call that supports doing so. This will save you a lot of trouble trying to figure out why the same code
+    works within the branch but not in a separate KStream.
+- Regarding the **dataset**:
+  - Wildlife-related aircraft accidents saw a spike between the late 90's and early 2000's, but they have been declining
+    ever since, although not by that much.
+  - Our ability to tell which species caused each accident hasn't improved by a lot, over the years.
+  - The species that caused the accident is known in only about 52% of the total cases.
+  - Each incident can be caused by multiple creatures (ranging from just one to the thousands). The fact that the grouping
+    was eventually performed using a count of incidents within a year instead of summing up the creature number per incident
+    is because if you want to find the most dangerous species, how many accidents that species caused is a better factor
+    to use than the number of creatures per accident.
+  - Gulls are a menace. Even when using the less strict validation option, they can still be found within the top species
+    to cause accidents per year, even among multiple "UNKNOWN" species entries. When using the more strict validation rules,
+    they are almost always first on the list.
