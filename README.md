@@ -3,8 +3,12 @@ A Kafka-based CSV processor for bird-related airplane accidents
 
 > [!WARNING]
 > This project was created with the purpose of exploring various different scenarios related to Kafka. It should not be
-> considered production-level by any means. Many parts of the code have been purposefully put together in a way that is
-> very far from "the Kafka way", in order to see what would happen.
+> considered production-level by any means. The structure has been purposefully put together in a way that is very far
+> from "the Kafka way", just to see what would happen and learn from the result.
+> 
+> Tests have also just been added as samples to indicate parts of the code that would normally need testing. The tests
+> themselves need a lot of work to be considered complete (including mocking secondary objects). This will probably be done
+> at some point in the future.
 
 ## Description
 This is a project created using **Java 22** and **Spring Boot 3.2.5**, which aims to parse a CSV file, process it within
