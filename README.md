@@ -229,10 +229,8 @@ This was a fun exercise, from which I learned a lot. Some conclusions that can b
     ever since, although not by that much.
   - Our ability to tell which species caused each accident hasn't improved by a lot, over the years.
   - The species that caused the accident is known in only about 52% of the total cases.
-  - Each incident can be caused by multiple creatures (ranging from just one to the thousands). The fact that the grouping
-    was eventually performed using a count of incidents within a year instead of summing up the creature number per incident
-    is because if you want to find the most dangerous species, how many accidents that species caused is a better factor
-    to use than the number of creatures per accident.
+  - If you want to find the most dangerous species, how many accidents that species caused is a better determining factor
+    than the number of creatures per accident.
   - Gulls are a menace. Even when using the less strict validation option, they can still be found within the top species
     to cause accidents per year, even among multiple "UNKNOWN" species entries. When using the more strict validation rules,
     they are almost always first on the list.
