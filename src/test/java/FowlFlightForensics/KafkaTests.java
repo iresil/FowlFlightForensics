@@ -43,7 +43,7 @@ public class KafkaTests {
         Consumer<IncidentKey, IncidentSummary> consumer = configureConsumer();
         Producer<IncidentKey, IncidentSummary> producer = configureProducer();
 
-        IncidentSummary incidentSummary = new IncidentSummary(111, 2024, 06, 24, "T-38A",
+        IncidentSummary incidentSummary = new IncidentSummary(111, 2024, 6, 24, "T-38A",
                 null, null, "KIWA", "PHOENIX-MESA GATEWAY", "AZ", "AWP",
                 null, "CLIMB", "K5105", "MERLIN", 2, 10,
                 null, null, false);

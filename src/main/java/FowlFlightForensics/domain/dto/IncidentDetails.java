@@ -4,7 +4,9 @@ import FowlFlightForensics.util.BaseComponent;
 import FowlFlightForensics.util.string.UppercaseConverter;
 import com.opencsv.bean.CsvBindByName;
 import com.opencsv.bean.CsvCustomBindByName;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.lang.reflect.Field;
@@ -13,6 +15,8 @@ import java.lang.reflect.Field;
  * An {@code IncidentDetails} object contains one row of information parsed by the input CSV file, it its raw format.
  * All the available fields have been assigned a specific type, based on what sort of values the CSV file contained.
  */
+@AllArgsConstructor
+@NoArgsConstructor
 @Getter
 @Setter
 public class IncidentDetails extends BaseComponent {
