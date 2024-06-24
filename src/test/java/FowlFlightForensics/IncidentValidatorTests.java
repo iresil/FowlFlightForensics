@@ -107,8 +107,8 @@ class IncidentValidatorTests {
 
 	@Test
 	public void validateAndTransformIncidentsParsedInput_ReturnsExpected() {
-		IncidentValidator incidentValidator = new IncidentValidator();
 		CsvReader csvReader = new CsvReader();
+		IncidentValidator incidentValidator = new IncidentValidator();
 		List<IncidentDetails> allIncidents = csvReader.zippedCsvToListOfObjects();
 
 		incidentValidator.validateAndTransformIncidents(allIncidents);
@@ -144,8 +144,8 @@ class IncidentValidatorTests {
 
 	@Test
 	public void validateIncidentSummaryValidInput_ReturnsExpected() {
-		IncidentValidator incidentValidator = new IncidentValidator();
 		CsvReader csvReader = new CsvReader();
+		IncidentValidator incidentValidator = new IncidentValidator();
 		List<IncidentDetails> allIncidents = csvReader.zippedCsvToListOfObjects();
 		incidentValidator.validateAndTransformIncidents(allIncidents);
 		IncidentSummary incidentSummary = new IncidentSummary(111, 2015, 6, 24, "T-38A",
@@ -160,8 +160,8 @@ class IncidentValidatorTests {
 
 	@Test
 	public void validateIncidentSummaryInvalidInput_ReturnsExpected() {
-		IncidentValidator incidentValidator = new IncidentValidator();
 		CsvReader csvReader = new CsvReader();
+		IncidentValidator incidentValidator = new IncidentValidator();
 		List<IncidentDetails> allIncidents = csvReader.zippedCsvToListOfObjects();
 		incidentValidator.validateAndTransformIncidents(allIncidents);
 		IncidentSummary incidentSummary = new IncidentSummary(111, 2015, 6, 24, "T-38A",

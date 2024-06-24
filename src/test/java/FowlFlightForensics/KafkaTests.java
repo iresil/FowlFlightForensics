@@ -39,7 +39,7 @@ public class KafkaTests {
     private EmbeddedKafkaBroker embeddedKafkaBroker;
 
     @Test
-    public void testKafkaIntegration() {
+    public void producedAndConsumedObjects_AreEqual() {
         Consumer<IncidentKey, IncidentSummary> consumer = configureConsumer();
         Producer<IncidentKey, IncidentSummary> producer = configureProducer();
 
