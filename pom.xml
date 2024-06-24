@@ -18,7 +18,6 @@
 		<spring-boot.version>3.2.5</spring-boot.version>
 		<maven.version>3.9.6</maven.version>
 		<opencsv.version>5.9</opencsv.version>
-		<jackson.version>2.17.1</jackson.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 	</properties>
@@ -62,12 +61,12 @@
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-core</artifactId>
-			<version>${jackson.version}</version>
+			<version>${jackson-bom.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
-			<version>${jackson.version}</version>
+			<version>${jackson-bom.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
