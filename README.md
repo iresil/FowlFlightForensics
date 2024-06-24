@@ -187,8 +187,8 @@ following values, you can draw your own conclusions based on the results:
   - `app.producer.send-message.fixed-rate`
     
     How fast the Producer sends messages to the `raw-data-topic`. This can also have an effect on how much data is exported
-    to the CSV file until the end of the execution, although not as much as the time window above. Values between `400` and
-    `1000` milliseconds have been tested, and the best results seemed to come from setting its default value to `500`.
+    to the CSV file until the end of the execution, although not as much as the time window above. Values between `500` and
+    `1000` milliseconds have been tested, and the best results seemed to come from setting its default value to `700`.
 
 The configurations mentioned above cannot be considered standalone. In fact, they have been observed to affect and be affected
 by each other. The current default values have been selected with the assumption that the strict validation rules will be
