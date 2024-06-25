@@ -234,4 +234,7 @@ This was a fun exercise, from which I learned a lot. Some conclusions that can b
     the opposite (i.e. how dangerous air travel is for wildlife).
   - Gulls are a menace. Even when using the less strict validation option, they can still be found within the top species
     to cause accidents per year, even among multiple "UNKNOWN" species entries. When using the more strict validation rules,
-    they are almost always first on the list.
+    they are almost always first on the list, although it does seem that incidents involving them have been getting fewer
+    as the years pass, and we don't have the latest statistics to check if this tendency continued. It might be interesting
+    to check how much of a threat we are to them, by using the second grouping option (i.e. using creature count instead
+    of incident count) to extract similar results.
