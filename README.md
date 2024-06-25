@@ -225,12 +225,13 @@ This was a fun exercise, from which I learned a lot. Some conclusions that can b
     used within each call that supports doing so. This will save you a lot of trouble trying to figure out why the same code
     works within the branch but not in a separate KStream.
 - Regarding the **dataset**:
-  - Wildlife-related aircraft accidents saw a spike between the late 90's and early 2000's, but they have been declining
-    ever since, although not by that much.
+  - The total number of wildlife-related aircraft accidents has seen a steady increase over the years. Air travel has also
+    increased, so chances are that the two are interconnected and the accident percentage hasn't really gone up.
   - Our ability to tell which species caused each accident hasn't improved by a lot, over the years.
   - The species that caused the accident is known in only about 52% of the total cases.
   - If you want to find the most dangerous species, how many accidents that species caused is a better determining factor
-    than the number of creatures per accident.
+    than the number of creatures per accident. The number of creatures per accident might actually be a good indicator for
+    the opposite (i.e. how dangerous air travel is for wildlife).
   - Gulls are a menace. Even when using the less strict validation option, they can still be found within the top species
     to cause accidents per year, even among multiple "UNKNOWN" species entries. When using the more strict validation rules,
     they are almost always first on the list.
