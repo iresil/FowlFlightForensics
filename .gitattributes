@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Only use LF instead of CRLF for .sh files
+*.sh text eol=lf
